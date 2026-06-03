@@ -1,0 +1,82 @@
+name: 功能建议
+description: 建议新的能力、工作流优化、模板或集成。
+title: "【Feature】"
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        好的功能建议应该先说明写作工作流中的问题，再说明你希望系统如何解决。
+  - type: textarea
+    id: problem
+    attributes:
+      label: 要解决的问题
+      description: 你遇到的是写作、规划、审查、记忆、RAG 还是 Dashboard 方面的问题？
+      placeholder: "例如：多卷连载时，进入下一卷规划前很难判断哪些未回收伏笔应该优先处理。"
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 期望方案
+      description: 你希望 Webnovel Writer 做什么？
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: 目标模块
+      description: 请选择这个建议主要影响的模块。
+      multiple: true
+      options:
+        - 初始化流程
+        - 规划流程
+        - 写章流程
+        - 审查流程
+        - 查询 / 记忆
+        - Story System / 数据链
+        - RAG / reference search
+        - Dashboard
+        - 题材模板
+        - 文档
+        - 其他
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: 使用模型
+      description: 如果这个建议和模型表现有关，请填写模型名称；不相关时请填“不适用”。
+      placeholder: "例如：deepseek-v4-pro / gpt-5.5 / claude-opus-4-8 / claude-sonnet-4-6 / gemini-3.1-pro-preview / gemini-3.5-flash / 不适用"
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: 示例工作流
+      description: 请描述用户会如何使用这个功能。
+      placeholder: |
+        1. 用户执行 ...
+        2. 系统展示 ...
+        3. 用户确认 ...
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 备选方案
+      description: 你考虑过哪些替代方案、手动 workaround 或更小的实现方式？
+  - type: textarea
+    id: impact
+    attributes:
+      label: 影响和风险
+      description: 请说明兼容性、数据迁移、隐私、提示词行为或维护成本方面的影响。
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 提交前检查
+      options:
+        - label: 我已经搜索过现有 Issue，确认不是重复建议。
+          required: true
+        - label: 我描述的是用户工作流或写作问题，而不只是实现细节。
+          required: true
+        - label: 我考虑过这个改动更适合放在文档、模板、提示词、脚本还是 Dashboard 中。
+          required: true
