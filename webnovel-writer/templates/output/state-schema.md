@@ -9,6 +9,13 @@
   "project_info": {
     "title": "",
     "genre": "",
+    "genre_label": "",
+    "genre_tags": {
+      "route": [],
+      "trope": [],
+      "format": [],
+      "templates": []
+    },
     "target_words": 0,
     "target_chapters": 0
   },

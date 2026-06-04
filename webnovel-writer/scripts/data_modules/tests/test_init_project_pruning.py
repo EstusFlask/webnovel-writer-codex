@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import pytest
+import json
 
 
 def test_init_skips_dead_templates_and_empty_libraries_for_single_protagonist(tmp_path, monkeypatch):
@@ -70,6 +71,33 @@ def test_init_generates_conditional_protagonist_group_and_heroine(tmp_path, monk
 
     assert (project_root / "设定集" / "主角组.md").is_file()
     assert (project_root / "设定集" / "女主卡.md").is_file()
+
+
+def test_init_persists_canonical_genre_and_template_tags(tmp_path, monkeypatch):
+    import init_project as init_project_module
+
+    monkeypatch.setattr(init_project_module, "is_git_available", lambda: False)
+    project_root = tmp_path / "book"
+
+    init_project_module.init_project(
+        str(project_root),
+        title="测试书",
+        genre="知乎短篇风的规则怪谈",
+        protagonist_name="陆鸣",
+        target_chapters=50,
+    )
+
+    state = json.loads((project_root / ".webnovel" / "state.json").read_text(encoding="utf-8"))
+    project_info = state["project_info"]
+    assert project_info["genre"] == "悬疑"
+    assert project_info["genre_label"] == "知乎短篇风的规则怪谈"
+    assert project_info["genre_tags"]["route"] == ["规则怪谈"]
+    assert project_info["genre_tags"]["format"] == ["知乎短篇"]
+    assert project_info["genre_tags"]["templates"] == ["规则怪谈", "知乎短篇"]
+
+    worldview = (project_root / "设定集" / "世界观.md").read_text(encoding="utf-8")
+    assert "规则怪谈" in worldview
+    assert "知乎短篇" in worldview
 
 
 def test_init_rejects_english_profile_key_before_writing_state(tmp_path, monkeypatch):

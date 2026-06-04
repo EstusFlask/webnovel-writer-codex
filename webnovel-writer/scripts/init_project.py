@@ -29,6 +29,7 @@ import re
 # 安全修复：导入安全工具函数
 from security_utils import sanitize_commit_message, atomic_write_json, is_git_available
 from project_locator import write_current_project_pointer
+from genre_taxonomy import resolve_genre_input, resolve_template_stems
 
 
 # Windows 编码兼容性修复
@@ -74,24 +75,8 @@ def _split_genre_keys(genre: str) -> list[str]:
 
 
 def _normalize_genre_key(key: str) -> str:
-    aliases = {
-        "修仙/玄幻": "修仙",
-        "玄幻修仙": "修仙",
-        "玄幻": "修仙",
-        "修真": "修仙",
-        "都市修真": "都市异能",
-        "都市高武": "高武",
-        "都市奇闻": "都市脑洞",
-        "古言脑洞": "古言",
-        "游戏电竞": "电竞",
-        "电竞文": "电竞",
-        "直播": "直播文",
-        "直播带货": "直播文",
-        "主播": "直播文",
-        "克系": "克苏鲁",
-        "克系悬疑": "克苏鲁",
-    }
-    return aliases.get(key, key)
+    stems = resolve_template_stems(key)
+    return stems[0] if stems else key
 
 
 def _apply_label_replacements(text: str, replacements: Dict[str, str]) -> str:
@@ -287,6 +272,8 @@ def init_project(
     if ".claude" in project_path.parts:
         raise SystemExit("Refusing to initialize a project inside .claude. Choose a different directory.")
     genre = _validate_initial_genre_source(genre)
+    genre_resolution = resolve_genre_input(genre)
+    canonical_genre = genre_resolution.canonical_genre or genre
     project_path.mkdir(parents=True, exist_ok=True)
 
     # 目录结构（同时兼容“卷目录”与后续扩展）
@@ -318,7 +305,14 @@ def init_project(
     state["project_info"].update(
         {
             "title": title,
-            "genre": genre,
+            "genre": canonical_genre,
+            "genre_label": genre,
+            "genre_tags": {
+                "route": genre_resolution.route_tags,
+                "trope": genre_resolution.trope_tags,
+                "format": genre_resolution.format_tags,
+                "templates": [Path(name).stem for name in genre_resolution.template_files],
+            },
             "created_at": created_at,
             "target_words": int(target_words),
             "target_chapters": int(target_chapters),
@@ -376,14 +370,16 @@ def init_project(
     templates_dir = script_dir.parent / "templates"
     output_templates_dir = templates_dir / "output"
     genre_key = (genre or "").strip()
-    genre_keys = [_normalize_genre_key(k) for k in _split_genre_keys(genre_key)]
+    template_files = list(genre_resolution.template_files)
+    if not template_files:
+        template_files = [f"{_normalize_genre_key(k)}.md" for k in _split_genre_keys(genre_key)]
     genre_templates = []
     seen = set()
-    for key in genre_keys:
-        if not key or key in seen:
+    for template_file in template_files:
+        if not template_file or template_file in seen:
             continue
-        seen.add(key)
-        template_text = _read_text_if_exists(templates_dir / "genres" / f"{key}.md")
+        seen.add(template_file)
+        template_text = _read_text_if_exists(templates_dir / "genres" / template_file)
         if template_text:
             genre_templates.append(template_text.strip())
     genre_template = "\n\n---\n\n".join(genre_templates)
@@ -436,6 +432,13 @@ def init_project(
                 "兑换规则": currency_exchange,
             },
         )
+        if genre_template:
+            worldview_content = (
+                worldview_content.rstrip()
+                + "\n\n## 参考题材模板（可删/可改）\n\n"
+                + genre_template.strip()
+                + "\n"
+            )
     _write_text_if_missing(
         project_path / "设定集" / "世界观.md",
         worldview_content,
