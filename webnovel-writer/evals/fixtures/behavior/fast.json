@@ -117,6 +117,11 @@
       "description": "data-agent produces commit artifacts and does not directly write projection read-models."
     },
     {
+      "id": "artifact_ownership",
+      "type": "artifact_ownership",
+      "description": "reviewer returns JSON while main flow writes review_results.json; data-agent writes only tmp artifacts."
+    },
+    {
       "id": "commit_drives_projection",
       "type": "commit_projection_runtime",
       "description": "ChapterCommitService remains the projection driver."

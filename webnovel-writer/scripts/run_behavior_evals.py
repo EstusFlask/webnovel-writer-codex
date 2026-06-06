@@ -152,6 +152,35 @@ def _eval_data_agent_boundary(root: Path, case: dict[str, Any]) -> dict[str, Any
     )
 
 
+def _eval_artifact_ownership(root: Path, case: dict[str, Any]) -> dict[str, Any]:
+    plugin_root = _plugin_root(root)
+    write_text = _read(plugin_root / "skills" / "webnovel-write" / "SKILL.md")
+    review_text = _read(plugin_root / "skills" / "webnovel-review" / "SKILL.md")
+    reviewer_tools = _frontmatter(_read(plugin_root / "agents" / "reviewer.md")).get("tools", "")
+    data_tools = _frontmatter(_read(plugin_root / "agents" / "data-agent.md")).get("tools", "")
+    missing: list[str] = []
+    if "Write" in reviewer_tools:
+        missing.append("reviewer 不应持 Write（review_results.json 由主流程落盘）")
+    if "Write" not in data_tools:
+        missing.append("data-agent 应持 Write（它是 tmp artifact 的唯一写入者）")
+    for text, owner in ((write_text, "webnovel-write"), (review_text, "webnovel-review")):
+        if "主流程" not in text or ".webnovel/tmp/review_results.json" not in text:
+            missing.append(f"{owner}: 缺 reviewer→主流程落盘 review_results.json 的所有权说明")
+    for item in (
+        "唯一写入者",
+        "主流程只检查文件存在与 schema",
+        "不直接写 state/index/summaries/memory/vectors/projection",
+    ):
+        if item not in write_text:
+            missing.append(f"webnovel-write 缺写入所有权红线：{item}")
+    return _result(
+        case,
+        passed=not missing,
+        reason="artifact ownership matches tools and prompts" if not missing else "artifact ownership drifted",
+        evidence=missing or ["reviewer→主流程 review_results.json；data-agent→tmp artifacts"],
+    )
+
+
 def _eval_commit_projection_runtime(root: Path, case: dict[str, Any]) -> dict[str, Any]:
     scripts_dir = _plugin_root(root) / "scripts"
     if str(scripts_dir) not in sys.path:
@@ -206,6 +235,7 @@ EVALUATORS = {
     "skill_contract": _eval_skill_contract,
     "write_blocking_gate": _eval_write_blocking_gate,
     "data_agent_boundary": _eval_data_agent_boundary,
+    "artifact_ownership": _eval_artifact_ownership,
     "commit_projection_runtime": _eval_commit_projection_runtime,
     "dashboard_read_only": _eval_dashboard_read_only,
 }

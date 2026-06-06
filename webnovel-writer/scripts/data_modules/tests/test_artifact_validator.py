@@ -159,3 +159,37 @@ def test_validate_chapter_commit_reports_projection_failure(tmp_path):
 
     assert report["ok"] is False
     assert any(item["type"] == ERROR_PROJECTION_FAILURE for item in report["errors"])
+
+
+def test_artifact_validator_rejects_missing_required_top_level_fields(tmp_path):
+    """precommit 负向用例：缺关键顶层字段时 runtime validator 必须拦截。
+
+    取代已退役的 test_webnovel_write_data_agent_prompt_requires_extraction_schema
+    （plan §12.2）：字段保障由 runtime schema 强制，而非主 Skill 文案锚定。
+    """
+    # fulfillment_result 缺 missed_nodes
+    fulfillment = _write_json(
+        tmp_path / "fulfillment_result.json",
+        {"planned_nodes": [], "covered_nodes": [], "extra_nodes": []},
+    )
+    report = validate_fulfillment_result(fulfillment)
+    assert report["ok"] is False
+    assert report["errors"][0]["type"] == ERROR_SCHEMA
+    assert "missed_nodes" in report["errors"][0]["message"]
+
+    # disambiguation_result 缺 pending
+    disambiguation = _write_json(tmp_path / "disambiguation_result.json", {})
+    report = validate_disambiguation_result(disambiguation)
+    assert report["ok"] is False
+    assert report["errors"][0]["type"] == ERROR_SCHEMA
+    assert "pending" in report["errors"][0]["message"]
+
+    # extraction_result 缺核心字段 accepted_events
+    extraction = _write_json(
+        tmp_path / "extraction_result.json",
+        {"state_deltas": [], "entity_deltas": []},
+    )
+    report = validate_extraction_result(extraction)
+    assert report["ok"] is False
+    assert report["errors"][0]["type"] == ERROR_SCHEMA
+    assert "accepted_events" in report["errors"][0]["message"]

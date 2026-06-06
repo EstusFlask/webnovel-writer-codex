@@ -27,25 +27,17 @@ color: yellow
 python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" state get-entity --id "{entity_id}"
 
 # 查询最近状态变更
-python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" index get-recent-state-changes --limit 20
+python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" index get-state-changes --limit 20
 ```
 
-## 3. 思维链（ReAct）
-
-对每个检查维度：
-1. **读取**相关数据（角色状态、世界规则、上章摘要）
-2. **对比**正文内容与数据
-3. **判断**是否存在矛盾/问题
-4. **记录**问题到清单（含 evidence 和 fix_hint）
-
-## 4. 输入
+## 3. 输入
 
 - `chapter`：章节号
 - `chapter_file`：正文文件路径
 - `project_root`：项目根目录
 - `scripts_dir`：脚本目录
 
-## 5. 执行流程（按顺序执行）
+## 4. 执行流程（按顺序执行）
 
 ### 1. 设定一致性（category: setting）
 - 角色能力是否与当前境界匹配
@@ -76,11 +68,11 @@ python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" ind
 
 完成上述 5 个维度检查后，必须为**每个维度**输出一行结论；无问题也要显式输出 `pass`。
 
-- 每个维度的结论写入输出 JSON 的 `dimension_results` 字段（见第 8 节）。
+- 每个维度的结论写入输出 JSON 的 `dimension_results` 字段（见第 7 节）。
 - 结论格式：无问题 → `"conclusion": "pass"`；有问题 → `"conclusion": "发现N个问题：简述"`，同时在 `issues` 中给出每条问题的完整结构。
 - `dimension_results` 必须且只能覆盖这 5 个维度：setting / timeline / continuity / character / logic。
 
-## 6. 边界与禁区
+## 5. 边界与禁区
 
 - **不评分**——不输出 overall_score、不输出 pass/fail
 - **不评价文笔质量**——"写得不够好"不是 issue，"与角色性格矛盾"才是
@@ -88,7 +80,7 @@ python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" ind
 - **不重复大纲内容**——不在 issue 中暴露未发生的剧情
 - **只报可验证的问题**——必须有 evidence（原文引用 or 数据对比）
 
-## 7. 检查清单
+## 6. 检查清单
 
 完成审查前自检：
 - [ ] 每个 issue 都有 evidence
@@ -98,7 +90,7 @@ python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" ind
 - [ ] blocking 字段只在 critical 或确认阻断时为 true
 - [ ] `dimension_results` 覆盖全部 5 个维度（无问题也输出 pass）
 
-## 8. 输出格式
+## 7. 输出格式
 
 严格按以下 JSON 格式输出（无其他文本）：
 
@@ -128,7 +120,7 @@ python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" ind
 
 > `category` 取值规范：本 agent 只产出 5 个维度值（`setting`/`timeline`/`continuity`/`character`/`logic`）；schema 中的 `pacing`/`other` 仅为后端兼容枚举，本 agent 不主动产出。
 
-## 9. 错误处理
+## 8. 错误处理
 
 - 无法读取角色状态 → 跳过设定一致性检查，在 summary 中标注"无法校验设定一致性：数据读取失败"
 - 无法读取上章摘要 → 跳过连贯性检查中的"上章钩子回应"项

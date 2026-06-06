@@ -110,7 +110,7 @@ def test_skill_frontmatter_complete(skill_file: Path):
 
 
 # ---------------------------------------------------------------------------
-# 2. Agent 模板结构（9 段）
+# 2. Agent 模板结构（≥4 段）
 # ---------------------------------------------------------------------------
 
 EXPECTED_AGENT_SECTIONS = [
@@ -118,16 +118,12 @@ EXPECTED_AGENT_SECTIONS = [
     "2.",
     "3.",
     "4.",
-    "5.",
-    "6.",
-    "7.",
-    "8.",
 ]
 
 
 @pytest.mark.parametrize("agent_file", AGENT_FILES, ids=lambda f: f.name)
 def test_agent_template_structure(agent_file: Path):
-    """每个 agent 至少包含 8 个编号段。"""
+    """每个 agent 至少包含 4 个编号段（§12.2 松绑：不强制 8 段，避免为过测试留空段）。"""
     text = _read_text(agent_file)
     missing = []
     for section in EXPECTED_AGENT_SECTIONS:
@@ -241,8 +237,8 @@ def test_webnovel_review_skill_uses_unified_reviewer_pipeline():
     skill_text = _read_text(SKILLS_DIR / "webnovel-review" / "SKILL.md")
 
     assert "`reviewer`" in skill_text
-    assert "Agent(" in skill_text
-    assert 'subagent_type: "webnovel-writer:reviewer"' in skill_text
+    assert "Use the Agent tool to run `webnovel-writer:reviewer`" in skill_text
+    assert "subagent_type:" not in skill_text
     assert "review-pipeline" in skill_text
     assert ".webnovel/tmp/review_results.json" in skill_text
     assert ".webnovel/tmp/review_metrics.json" in skill_text
@@ -272,14 +268,14 @@ def test_active_skills_use_agent_tool_name_not_legacy_task():
 
 
 def test_webnovel_write_skill_uses_explicit_agent_invocation_templates():
-    """webnovel-write 的关键 subagent 必须用显式 Agent(subagent_type=...) 调用模板。"""
+    """关键 subagent 必须经 Agent 工具按注册名 webnovel-writer:X 显式调用；不再用伪函数 subagent_type 块（plan §4.4.2/§8.4）。"""
     text = _read_text(SKILLS_DIR / "webnovel-write" / "SKILL.md")
     fm = _extract_frontmatter(text)
 
     assert "Agent" in fm.get("allowed-tools", "")
     for subagent in ("context-agent", "reviewer", "data-agent"):
-        assert f'subagent_type: "webnovel-writer:{subagent}"' in text
-        assert f'subagent_type: "{subagent}"' not in text
+        assert f"webnovel-writer:{subagent}" in text, f"缺少 {subagent} 的注册名显式调用"
+    assert "subagent_type:" not in text, "不应再使用伪函数 subagent_type 调用块"
     assert "不得用主流程口头代替 subagent 输出" in text
 
 
@@ -345,18 +341,16 @@ def test_data_agent_is_described_as_extraction_only_not_direct_write_mainline():
     assert "event_type" in text
     assert "subject" in text
     assert "直接写入 index.db 和 state.json" not in text
+    # data-agent 不得携带可运行的 chapter-commit 命令（commit 是主流程的事实提交入口，data-agent 只产 artifact）
+    assert not re.search(r"webnovel\.py[^\n]+chapter-commit", text), (
+        "data-agent.md 不应出现可运行的 webnovel.py ... chapter-commit 命令"
+    )
 
 
-def test_webnovel_write_data_agent_prompt_requires_extraction_schema():
-    text = (SKILLS_DIR / "webnovel-write" / "SKILL.md").read_text(encoding="utf-8")
-    assert "webnovel-writer:data-agent" in text
-    assert "fulfillment_result.json 必须顶层" in text
-    assert "planned_nodes/covered_nodes/missed_nodes/extra_nodes" in text
-    assert "disambiguation_result.json 必须顶层包含 pending" in text
-    assert "extraction_result.json 必须严格" in text
-    assert "accepted_events/state_deltas/entity_deltas" in text
-    assert "禁止包在 chapter/fulfillment/disambiguation/extraction" in text
-    assert "event_id/chapter/event_type/subject/payload" in text
+# (已按 plan §12.2 退役) test_webnovel_write_data_agent_prompt_requires_extraction_schema：
+# 该测试逐字要求主 Skill 写出 data artifact 的 schema 字段名，与判据一冲突。schema 字段保障已迁到
+# data-agent.md 生产方（test_data_agent_is_described_as_extraction_only_not_direct_write_mainline）
+# + precommit 负向用例（Task 7）。主 Skill 不再内联长 schema。
 
 
 def test_dashboard_and_plan_skills_surface_story_runtime_mainline():
@@ -460,7 +454,8 @@ def test_webnovel_init_deconstruction_wiring_keeps_confirmation_gate():
     """init may consume only confirmed, transformed reference patterns."""
     text = _read_text(SKILLS_DIR / "webnovel-init" / "SKILL.md")
 
-    assert 'subagent_type: "webnovel-writer:deconstruction-agent"' in text
+    assert "Use the Agent tool to run `webnovel-writer:deconstruction-agent`" in text
+    assert "subagent_type:" not in text
     assert "Step 1.5：灵感来源询问" in text
     assert "进入故事核采集前" in text
     assert "不要默认拆书" in text
@@ -501,3 +496,178 @@ def test_webnovel_init_deconstruction_wiring_keeps_confirmation_gate():
     assert "用户确认前" in text
     assert "Step 2-6 只能使用用户确认过、并已变形为本书差异化表达的模式" in text
     assert "汇总 Step 1.5 已确认的灵感来源" in text
+
+
+# ---------------------------------------------------------------------------
+# 7. A 类跨层红线：行为/契约级断言（Phase 0 守护）
+#    这些断言守护「已实现」的业务红线，全部应为绿。优先断言结构不变量
+#    （命令存在/顺序、节点 schema、变量化的真实参数），不做脆弱的文案匹配。
+# ---------------------------------------------------------------------------
+
+# A 类红线 2：placeholder-scan 必须出现在 plan 与 write 两层的关键节点。
+def test_placeholder_scan_runs_in_both_plan_and_write_skills():
+    """红线 2：plan 与 write 都必须显式调用 placeholder-scan CLI。"""
+    plan_text = _read_text(SKILLS_DIR / "webnovel-plan" / "SKILL.md")
+    write_text = _read_text(SKILLS_DIR / "webnovel-write" / "SKILL.md")
+    for name, text in (("webnovel-plan", plan_text), ("webnovel-write", write_text)):
+        cmds = _extract_cli_subcommands(text)
+        assert "placeholder-scan" in cmds, (
+            f"{name}: 关键节点缺少 placeholder-scan CLI 调用"
+        )
+
+
+# A 类红线 3：story-system 章级刷新必须传入真实 CHAPTER_GOAL 变量，
+# 不得把 {章纲目标} / 第N章章纲目标 这类占位文本当作 positional query。
+@pytest.mark.parametrize("skill_name", ["webnovel-plan", "webnovel-write"])
+def test_story_system_chapter_refresh_uses_real_goal_not_placeholder_query(skill_name: str):
+    """红线 3：story-system 的 query 实参是 ${CHAPTER_GOAL} 变量，且禁占位文本写在命令里。"""
+    text = _read_text(SKILLS_DIR / skill_name / "SKILL.md")
+    # 命令必须用变量化的真实目标作为 query 实参
+    assert 'story-system "${CHAPTER_GOAL}"' in text, (
+        f"{skill_name}: story-system 未使用真实 ${{CHAPTER_GOAL}} 作为 query 实参"
+    )
+    # 占位 query 绝不能作为 story-system 的 positional 实参出现
+    for placeholder in ("{章纲目标}", "第N章章纲目标"):
+        assert f'story-system "{placeholder}"' not in text, (
+            f"{skill_name}: story-system 不得把占位文本 {placeholder} 当作 query"
+        )
+    # 必须显式声明「禁止占位 query」这一约束（断言事实存在，不锁具体措辞）
+    assert "{章纲目标}" in text and "第N章章纲目标" in text, (
+        f"{skill_name}: 缺少对占位 query 的明确禁止说明"
+    )
+
+
+# A 类红线 4：story-system 章级刷新必须 --persist 且 --emit-runtime-contracts。
+@pytest.mark.parametrize("skill_name", ["webnovel-plan", "webnovel-write"])
+def test_story_system_chapter_refresh_persists_runtime_contracts(skill_name: str):
+    """红线 4：章级 story-system 刷新必须同时 --persist 与 --emit-runtime-contracts。"""
+    text = _read_text(SKILLS_DIR / skill_name / "SKILL.md")
+    cmd_start = text.find('story-system "${CHAPTER_GOAL}"')
+    assert cmd_start >= 0, f"{skill_name}: 缺少章级 story-system 调用"
+    # 取该调用所在的命令行（到下一空行/段落结束），断言两个关键开关都在
+    cmd_tail = text[cmd_start:cmd_start + 400]
+    assert "--persist" in cmd_tail, f"{skill_name}: 章级 story-system 缺少 --persist"
+    assert "--emit-runtime-contracts" in cmd_tail, (
+        f"{skill_name}: 章级 story-system 缺少 --emit-runtime-contracts"
+    )
+    assert "--chapter" in cmd_tail, f"{skill_name}: 章级 story-system 缺少 --chapter"
+
+
+# A 类红线 5：write-gate 三道闸门必须齐全且顺序为 prewrite→precommit→postcommit。
+def test_write_skill_gate_stages_ordered_prewrite_precommit_postcommit():
+    """红线 5：write-gate 三道 gate 顺序不可乱。"""
+    text = _read_text(SKILLS_DIR / "webnovel-write" / "SKILL.md")
+    prewrite = text.find("write-gate --chapter {chapter_num} --stage prewrite")
+    precommit = text.find("write-gate --chapter {chapter_num} --stage precommit")
+    postcommit = text.find("write-gate --chapter {chapter_num} --stage postcommit")
+    assert prewrite >= 0, "缺少 prewrite gate"
+    assert precommit >= 0, "缺少 precommit gate"
+    assert postcommit >= 0, "缺少 postcommit gate"
+    assert prewrite < precommit < postcommit, (
+        "write-gate 三道 gate 顺序必须为 prewrite→precommit→postcommit"
+    )
+
+
+# A 类红线 7：reviewer 原始 JSON 必须经 review-pipeline --save-metrics 落库（write 与 review 两层）。
+@pytest.mark.parametrize("skill_name", ["webnovel-write", "webnovel-review"])
+def test_review_pipeline_persists_metrics_in_review_chain(skill_name: str):
+    """红线 7：reviewer JSON 经 review-pipeline --save-metrics 落库。"""
+    text = _read_text(SKILLS_DIR / skill_name / "SKILL.md")
+    cmds = _extract_cli_subcommands(text)
+    assert "review-pipeline" in cmds, f"{skill_name}: 缺少 review-pipeline CLI 调用"
+    assert "--save-metrics" in text, f"{skill_name}: review-pipeline 未带 --save-metrics 落库"
+
+
+# A 类红线 10：postcommit 必须验证 projection 五项；失败只 projections retry。
+def test_write_skill_postcommit_verifies_five_projections_and_retry_only():
+    """红线 10：projection 五项（state/index/summary/memory/vector）验证，失败只 retry。"""
+    text = _read_text(SKILLS_DIR / "webnovel-write" / "SKILL.md")
+    assert "state/index/summary/memory/vector" in text, (
+        "缺少 projection 五项（state/index/summary/memory/vector）验证说明"
+    )
+    # 失败兜底唯一手段是 projections retry（命令以续行书写，直接断言字面调用）
+    assert "projections retry --chapter {chapter_num}" in text, (
+        "projection 失败兜底必须是 projections retry --chapter {chapter_num}"
+    )
+
+
+# A 类红线 12：plan 必须覆盖节拍表/时间线/结构化章纲节点/结构化总纲写回/状态更新。
+def test_plan_skill_covers_outline_writeback_and_state_sync_contract():
+    """红线 12：plan 的节拍表/时间线/章纲节点/总纲写回 JSON/master-outline-sync/update-state。"""
+    text = _read_text(SKILLS_DIR / "webnovel-plan" / "SKILL.md")
+    # 节拍表 / 时间线 输出物
+    assert "大纲/第{volume_id}卷-节拍表.md" in text
+    assert "大纲/第{volume_id}卷-时间线.md" in text
+    # 结构化章纲节点
+    for node in ("CBN", "CPNs", "CEN", "必须覆盖节点", "本章禁区"):
+        assert node in text, f"plan 缺少结构化章纲节点标记 {node}"
+    # 结构化总纲写回文件（不可从自由文本推断伏笔）
+    assert "大纲/第{volume_id}卷-总纲写回.json" in text
+    # 设定写回 + 状态同步命令
+    cmds = _extract_cli_subcommands(text)
+    assert "master-outline-sync" in cmds, "plan 缺少 master-outline-sync 写回命令"
+    assert "update-state" in cmds, "plan 缺少 update-state 状态更新命令"
+
+
+# ---------------------------------------------------------------------------
+# 8. B 类跨层新契约（plan §5.2-B / §4.5 写入所有权矩阵）
+#    tools↔落盘一致性现状已满足 → 作通过型守护；
+#    提交前只读 git diff 变更面校验现状缺失 → xfail，Task 5（Phase 1）落地后移除标记转正。
+# ---------------------------------------------------------------------------
+
+def _agent_tools(agent_name: str) -> list[str]:
+    """解析某 agent frontmatter 的 tools 列表。"""
+    fm = _extract_frontmatter(_read_text(AGENTS_DIR / f"{agent_name}.md"))
+    return [t.strip() for t in fm.get("tools", "").split(",") if t.strip()]
+
+
+# B 类红线（写入所有权 ↔ tools 一致，单一写入者）：
+# data-agent 是三份 tmp artifact 的唯一写入者 → 必须持 Write；
+# reviewer/context-agent/deconstruction-agent 只返回结果、由主流程落盘 → 不得持 Write。
+def test_agent_write_ownership_matches_tools_frontmatter():
+    """红线（写入所有权）：仅 data-agent 持 Write，其余三个 agent 不持 Write。"""
+    assert "Write" in _agent_tools("data-agent"), (
+        "data-agent 必须持有 Write（它是三份 tmp artifact 的唯一写入者）"
+    )
+    for agent_name in ("reviewer", "context-agent", "deconstruction-agent"):
+        assert "Write" not in _agent_tools(agent_name), (
+            f"{agent_name} 不得持有 Write（它只返回结果，由主流程落盘）"
+        )
+
+
+# B 类红线（提交前变更面校验）：write SKILL 在 chapter-commit 前必须执行只读 git diff 变更面校验。
+# 现状 write SKILL 尚无此步 → 标 xfail；Task 5（Phase 1）实现后移除本标记，转为硬守护。
+# B 类红线（提交前变更面校验）：write SKILL 在 chapter-commit 前必须执行只读 git diff 变更面校验。
+# Phase 1 (Task 5) 已落地 → 转为硬守护（移除 xfail 标记）。
+def test_write_skill_has_readonly_git_diff_change_surface_check():
+    """红线（提交前变更面校验）：write SKILL 在 chapter-commit 前执行只读 git diff 校验。"""
+    text = _read_text(SKILLS_DIR / "webnovel-write" / "SKILL.md")
+    assert "diff --name-status" in text, (
+        "write SKILL 缺少提交前只读 git diff --name-status 变更面校验"
+    )
+    assert "diff --check" in text, (
+        "write SKILL 缺少 git diff --check 空白/冲突标记校验"
+    )
+
+
+# B 类红线（写入所有权·prompt 层）：write/review 必须在文本层声明所有权，
+# 与 frontmatter（test_agent_write_ownership_matches_tools_frontmatter）+ behavior eval（artifact_ownership）三处互守。
+def test_write_review_skills_state_artifact_ownership():
+    """reviewer 返回 JSON、主流程落盘 review_results.json、data-agent 唯一写入者。"""
+    write_text = _read_text(SKILLS_DIR / "webnovel-write" / "SKILL.md")
+    review_text = _read_text(SKILLS_DIR / "webnovel-review" / "SKILL.md")
+    for name, text in (("webnovel-write", write_text), ("webnovel-review", review_text)):
+        assert "主流程" in text and ".webnovel/tmp/review_results.json" in text, (
+            f"{name}: 缺 reviewer→主流程落盘 review_results.json 的所有权说明"
+        )
+    assert "唯一写入者" in write_text, "webnovel-write 缺 data-agent 唯一写入者说明"
+    assert "主流程只检查文件存在与 schema" in write_text
+    assert "不直接写 state/index/summaries/memory/vectors/projection" in write_text
+
+
+# §9.3/§12.3：reviewer 删除 ReAct/思维链 元叙述后的正向守护（审查只给输出合同，不教它怎么想）。
+def test_reviewer_has_no_react_meta_narrative():
+    """reviewer.md 不得保留 ReAct/思维链 元叙述。"""
+    text = _read_text(AGENTS_DIR / "reviewer.md")
+    assert "ReAct" not in text, "reviewer 不应出现 ReAct 字样"
+    assert "思维链" not in text, "reviewer 不应保留思维链元叙述"

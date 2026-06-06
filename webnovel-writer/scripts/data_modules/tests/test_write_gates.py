@@ -82,6 +82,54 @@ def test_precommit_gate_accepts_valid_artifacts(tmp_path):
     assert report["details"]["artifact_report"]["ok"] is True
 
 
+def test_precommit_gate_rejects_fulfillment_missing_missed_nodes(tmp_path):
+    _make_init_ready(tmp_path)
+    _make_contracts(tmp_path, chapter=1)
+    (tmp_path / "正文" / "第0001章.md").write_text("正文\n", encoding="utf-8")
+    _write_valid_artifacts(tmp_path)
+    _write_json(
+        tmp_path / ".webnovel" / "tmp" / "fulfillment_result.json",
+        {"planned_nodes": [], "covered_nodes": [], "extra_nodes": []},
+    )
+
+    report = run_write_gate(tmp_path, chapter=1, stage="precommit")
+
+    assert report["ok"] is False
+    assert any(item["code"] == "artifact.schema_error" for item in report["errors"])
+    assert any("missed_nodes" in item["message"] for item in report["errors"])
+
+
+def test_precommit_gate_rejects_disambiguation_missing_pending(tmp_path):
+    _make_init_ready(tmp_path)
+    _make_contracts(tmp_path, chapter=1)
+    (tmp_path / "正文" / "第0001章.md").write_text("正文\n", encoding="utf-8")
+    _write_valid_artifacts(tmp_path)
+    _write_json(tmp_path / ".webnovel" / "tmp" / "disambiguation_result.json", {"warnings": []})
+
+    report = run_write_gate(tmp_path, chapter=1, stage="precommit")
+
+    assert report["ok"] is False
+    assert any(item["code"] == "artifact.schema_error" for item in report["errors"])
+    assert any("pending" in item["message"] for item in report["errors"])
+
+
+def test_precommit_gate_rejects_extraction_missing_accepted_events(tmp_path):
+    _make_init_ready(tmp_path)
+    _make_contracts(tmp_path, chapter=1)
+    (tmp_path / "正文" / "第0001章.md").write_text("正文\n", encoding="utf-8")
+    _write_valid_artifacts(tmp_path)
+    _write_json(
+        tmp_path / ".webnovel" / "tmp" / "extraction_result.json",
+        {"state_deltas": [], "entity_deltas": [], "summary_text": "摘要"},
+    )
+
+    report = run_write_gate(tmp_path, chapter=1, stage="precommit")
+
+    assert report["ok"] is False
+    assert any(item["code"] == "artifact.schema_error" for item in report["errors"])
+    assert any("accepted_events" in item["message"] for item in report["errors"])
+
+
 def test_precommit_gate_blocks_projection_failed_phase(tmp_path):
     _make_init_ready(tmp_path)
     _make_contracts(tmp_path, chapter=1)

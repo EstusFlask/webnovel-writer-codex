@@ -8,43 +8,47 @@
 
 ## 直接 Read 的 md/template
 
-| Skill | 阶段 | 触发 | Reference |
-|-------|------|------|-----------|
-| webnovel-init | Step 1 | always | `skills/webnovel-init/references/system-data-flow.md` |
-| webnovel-init | Step 1 | always | `skills/webnovel-init/references/genre-tropes.md` |
-| webnovel-init | 卖点/题材采集 | always | `references/genre-profiles.md` |
-| webnovel-init | Step 2 | 用户人物扁平 | `skills/webnovel-init/references/worldbuilding/character-design.md` |
-| webnovel-init | Step 4 | always | `skills/webnovel-init/references/worldbuilding/faction-systems.md` |
-| webnovel-init | Step 4 | 涉及修仙/玄幻/高武/异能 | `skills/webnovel-init/references/worldbuilding/power-systems.md` |
-| webnovel-init | Step 4 | always | `skills/webnovel-init/references/worldbuilding/world-rules.md` |
-| webnovel-init | Step 5 | always | `skills/webnovel-init/references/creativity/creativity-constraints.md` |
-| webnovel-init | Step 5 | always | `skills/webnovel-init/references/creativity/selling-points.md` |
-| webnovel-init | Step 5 | 复合题材 | `skills/webnovel-init/references/creativity/creative-combination.md` |
-| webnovel-init | Step 5 | 卡顿 | `skills/webnovel-init/references/creativity/inspiration-collection.md` |
-| webnovel-init | Step 5 | 题材映射命中 | `skills/webnovel-init/references/creativity/anti-trope-*.md` |
-| webnovel-init | Step 6 | always | `skills/webnovel-init/references/worldbuilding/setting-consistency.md` |
-| webnovel-plan | Step 4 | always | `templates/output/大纲-卷节拍表.md` |
-| webnovel-plan | Step 5 | always | `templates/output/大纲-卷时间线.md` |
-| webnovel-plan | Step 6 | always | `references/genre-profiles.md` |
-| webnovel-plan | Step 6 | always | `references/shared/strand-weave-pattern.md` |
-| webnovel-plan | 章纲拆分 | always | `references/outlining/plot-signal-vs-spoiler.md` |
-| webnovel-plan | Step 6 | 需要爽点设计 | `references/shared/cool-points-guide.md` |
-| webnovel-plan | Step 6/7 | 需要冲突设计 | `skills/webnovel-plan/references/outlining/conflict-design.md` |
-| webnovel-plan | Step 7 | 需要追读力分析 | `references/reading-power-taxonomy.md` |
-| webnovel-plan | Step 7 | 需要章纲细化 | `skills/webnovel-plan/references/outlining/chapter-planning.md` |
-| webnovel-plan | Step 6/7 | 特定题材节奏 | `skills/webnovel-plan/references/outlining/genre-volume-pacing.md` |
-| webnovel-write | Step 4 | always | `skills/webnovel-write/references/polish-guide.md` |
-| webnovel-write | Step 4 | always | `skills/webnovel-write/references/writing/typesetting.md` |
-| webnovel-write | Step 4 | always | `skills/webnovel-write/references/style-adapter.md` |
-| webnovel-review | Step 2 | always | `references/shared/core-constraints.md` |
-| webnovel-review | Step 2 | always | `references/review-schema.md` |
-| webnovel-review | Step 2 | 审查涉及爽点或钩子分析 | `references/shared/cool-points-guide.md` |
-| webnovel-review | Step 2 | 审查涉及多线交织 | `references/shared/strand-weave-pattern.md` |
-| webnovel-review | Step 6 | blocking issue 需用户决策 | `references/review/blocking-override-guidelines.md` |
-| webnovel-query | 查询识别后 | 所有查询 | `skills/webnovel-query/references/system-data-flow.md` |
-| webnovel-query | 查询识别后 | 伏笔分析 | `skills/webnovel-query/references/advanced/foreshadowing.md` |
-| webnovel-query | 查询识别后 | 节奏分析 | `references/shared/strand-weave-pattern.md` |
-| webnovel-query | 查询识别后 | 格式查询 | `skills/webnovel-query/references/tag-specification.md` |
+> 「读取方式」：**区段** = 先 `Grep` 匹配 `^#{1,4} ` 定位真实标题锚点行号，再 `Read` offset/limit 取段（七个靶心大文件，锚点见末列）；**全文** = 短文件整体读。锚点用文件里的真实标题原文（含中文顿号「、」），不是计划简写。靶心文件与锚点出处见 `docs/architecture/phase0-slimming-and-read-audit-2026-06-06.md` §A.1。
+
+| Skill | 阶段 | 触发 | Reference | 读取方式 | 区段锚点（区段读时匹配此真实标题） |
+|-------|------|------|-----------|---------|-----------|
+| webnovel-init | Step 1 | always | `skills/webnovel-init/references/system-data-flow.md` | 全文 | — |
+| webnovel-init | Step 1 | always | `skills/webnovel-init/references/genre-tropes.md` | 区段 | 当前题材段 |
+| webnovel-init | 卖点/题材采集 | always | `references/genre-profiles.md` | 区段 | 当前 genre 的单个 `### 2.x`；按需加 `## 一、Profile 字段说明` |
+| webnovel-init | Step 2 | 用户人物扁平 | `skills/webnovel-init/references/worldbuilding/character-design.md` | 全文 | — |
+| webnovel-init | Step 4 | always | `skills/webnovel-init/references/worldbuilding/faction-systems.md` | 区段 | 当前世界观所需小节 |
+| webnovel-init | Step 4 | 涉及修仙/玄幻/高武/异能 | `skills/webnovel-init/references/worldbuilding/power-systems.md` | 区段 | 力量体系对应小节 |
+| webnovel-init | Step 4 | always | `skills/webnovel-init/references/worldbuilding/world-rules.md` | 全文 | — |
+| webnovel-init | Step 5 | always | `skills/webnovel-init/references/creativity/creativity-constraints.md` | 区段 | 采集读 `## 一、创意包 Schema (Idea Package)` / `## 六、硬约束驱动创意 (Hard Constraints)` / `## 八、评分系统 (Scoring System)`；评分展示读 `### 8.1 五维评分` |
+| webnovel-init | Step 5 | always | `skills/webnovel-init/references/creativity/selling-points.md` | 区段 | `## 9. 核心卖点定位模板` 骨架；按需补 `### 1.3 核心卖点黄金公式` / `## 7. 实战检查清单` |
+| webnovel-init | Step 5 | 复合题材 | `skills/webnovel-init/references/creativity/creative-combination.md` | 区段 | 当前混搭轴对应小节 |
+| webnovel-init | Step 5 | 卡顿 | `skills/webnovel-init/references/creativity/inspiration-collection.md` | 区段 | 所需采集小节 |
+| webnovel-init | Step 5 | 题材映射命中 | `skills/webnovel-init/references/creativity/anti-trope-*.md` | 区段 | 对应反套路项 |
+| webnovel-init | Step 6 | always | `skills/webnovel-init/references/worldbuilding/setting-consistency.md` | 区段 | 一致性校验小节 |
+| webnovel-plan | Step 4 | always | `templates/output/大纲-卷节拍表.md` | 全文 | — |
+| webnovel-plan | Step 5 | always | `templates/output/大纲-卷时间线.md` | 全文 | — |
+| webnovel-plan | Step 6 | always | `references/genre-profiles.md` | 区段 | 当前 genre 的单个 `### 2.x`；按需加 `## 一、Profile 字段说明` |
+| webnovel-plan | Step 6 | always | `references/shared/strand-weave-pattern.md` | 全文 | — |
+| webnovel-plan | 章纲拆分 | always | `references/outlining/plot-signal-vs-spoiler.md` | 全文 | — |
+| webnovel-plan | Step 6 | 需要爽点设计 | `references/shared/cool-points-guide.md` | 区段 | 所需爽点维度段；题材适配取 `## 九、题材适配` |
+| webnovel-plan | Step 6/7 | 需要冲突设计 | `skills/webnovel-plan/references/outlining/conflict-design.md` | 区段 | 对应冲突类型小节 |
+| webnovel-plan | Step 7 | 需要追读力分析 | `references/reading-power-taxonomy.md` | 区段 | 按需取 `## 一、钩子类型` / `## 二、爽点模式` / `## 三、即时满足/微兑现` |
+| webnovel-plan | Step 7 | 需要章纲细化 | `skills/webnovel-plan/references/outlining/chapter-planning.md` | 区段 | `## 10. 结构化节点规范（CBN/CPNs/CEN）`；需模板时加 `## 7. 章节规划模板` |
+| webnovel-plan | Step 6/7 | 特定题材节奏 | `skills/webnovel-plan/references/outlining/genre-volume-pacing.md` | 全文 | — |
+| webnovel-write | Step 4 | always | `skills/webnovel-write/references/polish-guide.md` | 区段 | 主路径 `## 2. 执行顺序（必须按序）`；Anti-AI 终检 `## 2A. Anti-AI 检测细则` / `## Phase 1 增补：Anti-AI 规范（7层，原版）` |
+| webnovel-write | Step 4 | always | `skills/webnovel-write/references/writing/typesetting.md` | 全文 | — |
+| webnovel-write | Step 4 | always | `skills/webnovel-write/references/style-adapter.md` | 全文 | — |
+| webnovel-review | Step 2 | always | `references/shared/core-constraints.md` | 全文 | — |
+| webnovel-review | Step 2 | always | `references/review-schema.md` | 全文 | — |
+| webnovel-review | Step 2 | 审查涉及爽点或钩子分析 | `references/shared/cool-points-guide.md` | 区段 | 所需爽点维度段；题材适配取 `## 九、题材适配` |
+| webnovel-review | Step 2 | 审查涉及多线交织 | `references/shared/strand-weave-pattern.md` | 全文 | — |
+| webnovel-review | Step 6 | blocking issue 需用户决策 | `references/review/blocking-override-guidelines.md` | 全文 | — |
+| webnovel-query | 查询识别后 | 所有查询 | `skills/webnovel-query/references/system-data-flow.md` | 区段 | 按查询类型取数据源优先级小节 |
+| webnovel-query | 查询识别后 | 伏笔分析 | `skills/webnovel-query/references/advanced/foreshadowing.md` | 全文 | — |
+| webnovel-query | 查询识别后 | 节奏分析 | `references/shared/strand-weave-pattern.md` | 全文 | — |
+| webnovel-query | 查询识别后 | 格式查询 | `skills/webnovel-query/references/tag-specification.md` | 全文 | — |
+
+> 七个靶心大文件（`references/genre-profiles.md`、`skills/webnovel-init/references/creativity/selling-points.md`、`references/reading-power-taxonomy.md`、`skills/webnovel-plan/references/outlining/chapter-planning.md`、`skills/webnovel-init/references/creativity/creativity-constraints.md`、`skills/webnovel-write/references/polish-guide.md`、`references/shared/cool-points-guide.md`）一律区段读，避免 init/plan/write 每跑全量吞入；短文件维持全文读。
 
 ## CSV 检索：直接调用 `reference_search.py`
 
@@ -94,8 +98,11 @@
 | 文件 | 现状 |
 |------|------|
 | `skills/webnovel-write/references/style-variants.md` | 未在当前 write 流程中直接加载 |
-| `skills/webnovel-write/references/writing/combat-scenes.md` | 由 CSV `场景写法` 承担战斗触发，不直接 Read |
-| `skills/webnovel-write/references/writing/dialogue-writing.md` | 由 CSV `写作技法` 承担对话触发，不直接 Read |
-| `skills/webnovel-write/references/writing/emotion-psychology.md` | 由 CSV `写作技法` 承担情感触发，不直接 Read |
+| `skills/webnovel-write/references/writing/combat-scenes.md` | 已 stub 化，正文迁至 CSV `场景写法` |
+| `skills/webnovel-write/references/writing/dialogue-writing.md` | 已 stub 化，正文迁至 CSV `写作技法` |
+| `skills/webnovel-write/references/writing/emotion-psychology.md` | 已 stub 化，正文迁至 CSV `写作技法` |
+| `skills/webnovel-write/references/writing/scene-description.md` | 已 stub 化，正文迁至 CSV `写作技法` |
+| `skills/webnovel-write/references/writing/desire-description.md` | 保守保留原文；CSV 尚未覆盖欲念描写细节，当前未被 SKILL.md 直接加载 |
+| `skills/webnovel-write/references/writing/genre-hook-payoff-library.md` | 保守保留原文；CSV 仅覆盖部分钩子/兑现条目，当前未被 SKILL.md 直接加载 |
 | `skills/webnovel-review/references/common-mistakes.md` | 未在当前 review 流程中直接加载 |
 | `skills/webnovel-review/references/pacing-control.md` | 未在当前 review 流程中直接加载 |

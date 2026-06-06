@@ -50,8 +50,8 @@
 | `writing/dialogue-writing.md` (231 行)         | 写作技法.csv（分类=对话）      | 同上            |
 | `writing/emotion-psychology.md` (265 行)       | 写作技法.csv（分类=情感）      | 同上            |
 | `writing/scene-description.md` (263 行)        | 写作技法.csv（分类=场景）      | 同上            |
-| `writing/desire-description.md` (311 行)       | 写作技法.csv（分类=情感）      | 同上            |
-| `writing/genre-hook-payoff-library.md` (85 行) | 场景写法.csv（场景类型=钩子/兑现） | 同上            |
+| `writing/desire-description.md` (311 行)       | 写作技法.csv（分类=情感）      | 保守保留原文；CSV 尚未覆盖欲念描写细节 |
+| `writing/genre-hook-payoff-library.md` (85 行) | 场景写法.csv（场景类型=钩子/兑现） | 保守保留原文；CSV 仅覆盖部分钩子/兑现条目 |
 
 
 ### 延迟（当前不纳入，条件触发后补回）
@@ -91,4 +91,3 @@
 | 言情核心场景扩展 | P1 | 继续补 `场景写法.csv` 中暧昧、误会、重逢、分手、追妻等场景 |
 | 悬疑推理技法扩展 | P1 | 继续补 `写作技法.csv` 与 `桥段套路.csv` 中线索、公平误导、真相揭露 |
 | shared md 可迁移审查 | P2 | `cool-points-guide.md`、`naming-and-voice-gaps.md` 的可条目化内容留待人工逐条录入 |
-
