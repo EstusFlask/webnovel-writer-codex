@@ -118,16 +118,12 @@ EXPECTED_AGENT_SECTIONS = [
     "2.",
     "3.",
     "4.",
-    "5.",
-    "6.",
-    "7.",
-    "8.",
 ]
 
 
 @pytest.mark.parametrize("agent_file", AGENT_FILES, ids=lambda f: f.name)
 def test_agent_template_structure(agent_file: Path):
-    """每个 agent 至少包含 8 个编号段。"""
+    """每个 agent 至少包含 4 个编号段（§12.2 松绑：不强制 8 段，避免为过测试留空段）。"""
     text = _read_text(agent_file)
     missing = []
     for section in EXPECTED_AGENT_SECTIONS:
@@ -666,3 +662,11 @@ def test_write_review_skills_state_artifact_ownership():
     assert "唯一写入者" in write_text, "webnovel-write 缺 data-agent 唯一写入者说明"
     assert "主流程只检查文件存在与 schema" in write_text
     assert "不直接写 state/index/summaries/memory/vectors/projection" in write_text
+
+
+# §9.3/§12.3：reviewer 删除 ReAct/思维链 元叙述后的正向守护（审查只给输出合同，不教它怎么想）。
+def test_reviewer_has_no_react_meta_narrative():
+    """reviewer.md 不得保留 ReAct/思维链 元叙述。"""
+    text = _read_text(AGENTS_DIR / "reviewer.md")
+    assert "ReAct" not in text, "reviewer 不应出现 ReAct 字样"
+    assert "思维链" not in text, "reviewer 不应保留思维链元叙述"
