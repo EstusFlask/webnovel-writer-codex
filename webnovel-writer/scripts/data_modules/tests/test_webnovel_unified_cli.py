@@ -383,6 +383,132 @@ def test_project_status_cli_outputs_json_without_reusing_status(monkeypatch, tmp
     assert report["phase"] == "init_ready"
 
 
+def test_user_report_cli_outputs_json(monkeypatch, tmp_path, capsys):
+    module = _load_webnovel_module()
+    project_root = tmp_path / "book"
+    _make_cli_init_ready_project(project_root)
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "webnovel",
+            "--project-root",
+            str(project_root),
+            "user-report",
+            "--stage",
+            "init",
+            "--format",
+            "json",
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        module.main()
+
+    captured = capsys.readouterr()
+    report = json.loads(captured.out)
+    assert int(exc.value.code or 0) == 0
+    assert report["schema_version"] == "webnovel-user-report/v1"
+    assert report["stage"] == "init"
+    assert report["overall_status"] == "completed"
+
+
+def test_run_ledger_cli_records_and_reports_resume(monkeypatch, tmp_path, capsys):
+    module = _load_webnovel_module()
+    project_root = tmp_path / "book"
+    _make_cli_init_ready_project(project_root)
+    chapter_file = project_root / "正文" / "第0001章.md"
+    chapter_file.write_text("正文\n", encoding="utf-8")
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "webnovel",
+            "--project-root",
+            str(project_root),
+            "run-ledger",
+            "record-write-step",
+            "--chapter",
+            "1",
+            "--step",
+            "draft",
+            "--status",
+            "completed",
+            "--outputs-json",
+            json.dumps({"chapter_file": str(chapter_file)}, ensure_ascii=False),
+            "--format",
+            "json",
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        module.main()
+
+    entry = json.loads(capsys.readouterr().out)
+    assert int(exc.value.code or 0) == 0
+    assert entry["step"] == "draft"
+    assert entry["outputs"]["chapter_file"]["exists"] is True
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "webnovel",
+            "--project-root",
+            str(project_root),
+            "run-ledger",
+            "write-resume",
+            "--chapter",
+            "1",
+            "--format",
+            "json",
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        module.main()
+
+    resume = json.loads(capsys.readouterr().out)
+    assert int(exc.value.code or 0) == 0
+    assert resume["schema_version"] == "webnovel-run-ledger/v1"
+    assert resume["steps"][0]["step"] == "draft"
+    assert resume["steps"][0]["action"] == "skip"
+
+
+def test_run_log_cli_redacts_sensitive_payload(monkeypatch, tmp_path, capsys):
+    module = _load_webnovel_module()
+    project_root = tmp_path / "book"
+    _make_cli_init_ready_project(project_root)
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "webnovel",
+            "--project-root",
+            str(project_root),
+            "run-log",
+            "--event",
+            "failure",
+            "--payload-json",
+            json.dumps({"api_key": "secret-value", "message": "ok"}, ensure_ascii=False),
+            "--format",
+            "json",
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        module.main()
+
+    result = json.loads(capsys.readouterr().out)
+    assert int(exc.value.code or 0) == 0
+    log_text = Path(result["path"]).read_text(encoding="utf-8")
+    assert "secret-value" not in log_text
+    assert "<redacted>" in log_text
+
+
 def test_doctor_cli_reports_missing_init_file(monkeypatch, tmp_path, capsys):
     module = _load_webnovel_module()
     project_root = tmp_path / "book"

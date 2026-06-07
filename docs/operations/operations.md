@@ -142,6 +142,32 @@ python -X utf8 "${CLAUDE_PLUGIN_ROOT}/scripts/webnovel.py" --project-root "${PRO
 
 投影补跑只从已有 `.story-system/commits/*.commit.json` 读取事实，并重新生成 `.webnovel/state.json`、`index.db`、`summaries/`、`memory_scratchpad.json`、`vectors.db` 等 read-model。每次执行会追加 `.webnovel/projection_log.jsonl`。
 
+### 作者友好报告与恢复
+
+主 Skill 的最终报告统一使用四种总状态：已完成、部分完成、需要你处理、未完成。报告只给作者需要知道的结论、产物、问题和下一步建议；内部 JSON、traceback 和长命令日志不直接展示。
+
+异常分三类处理：
+
+- **已自动处理**：幂等、可重试、不碰作者内容的问题，例如 projection retry 成功、缺失 runtime contract 后重新生成。流程默认继续，但最终报告必须说明处理过什么。
+- **需要确认**：会影响创作方向、事实取舍、是否覆盖文件或断点续跑边界的问题，例如正文被手动改过、章纲更新晚于正文、本章已 accepted 后再次写章。系统应给 2-3 个有限选项。
+- **必须处理**：blocking 审查问题、关键产物缺失、commit 被拒、投影补跑仍失败等。系统停在安全位置，报告说明已完成内容、卡点和恢复建议。
+
+`/webnovel-write` 会记录写章断点，用于重跑时判断可信完成项：
+
+```bash
+python -X utf8 "${CLAUDE_PLUGIN_ROOT}/scripts/webnovel.py" --project-root "${PROJECT_ROOT}" run-ledger write-resume --chapter 12 --format text
+```
+
+断点建议只负责判断和提示，不自动覆盖文件。凡是涉及作者手改正文、旧正文是否沿用、accepted commit 是否重做，都必须先询问。
+
+不可恢复故障会提示查看：
+
+```text
+.webnovel/logs/run_last.log
+```
+
+该日志用于保留最近一次运行的脱敏技术细节，便于排查。写入日志时会遮蔽常见敏感字段和值，包括 `api_key`、`secret`、`token`、`authorization`、`password`、`passwd`、`credential` 以及形如 `KEY=value` 的内联密钥片段。日志仍可能包含文件路径和错误上下文，提交 issue 前建议再人工扫一眼。
+
 ### 测试
 
 ```bash

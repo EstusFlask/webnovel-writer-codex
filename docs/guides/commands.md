@@ -95,6 +95,19 @@
 python -X utf8 "<CLAUDE_PLUGIN_ROOT>/scripts/webnovel.py" --project-root "<PROJECT_ROOT>" <子命令> [参数]
 ```
 
+### 作者友好运行体验
+
+`/webnovel-init`、`/webnovel-plan`、`/webnovel-write` 和 `/webnovel-review` 结束时都会输出统一最终报告。报告不直接输出原始 JSON、traceback 或长命令日志，而是先给一句总状态，再分三段说明：产生的文件与完成情况、过程中遇到的问题与异常耗时、下一步建议。
+
+总状态有四种：
+
+- **已完成**：目标产物和关键校验都通过。
+- **部分完成**：主要产物已保留，但存在跳过项、自动处理项或待确认事项。
+- **需要你处理**：系统停在安全位置，需要作者裁决创作方向、事实取舍、文件覆盖或 blocking 问题。
+- **未完成**：关键产物没有可信生成，需要按报告建议重跑或排查。
+
+长流程执行中只显示少量过程提示，说明当前阶段和会产生什么。自动补跑投影、重新 emit 缺失合同这类幂等操作不会打断作者，但会出现在最终报告里。重复执行同一条主命令时，系统会优先检查可信断点；首版断点续跑重点覆盖 `/webnovel-write`，尽量从失败点继续，而不是重写已可信完成的正文、审查、提交或备份。
+
 ## Story System 主链
 
 推荐按以下顺序执行：
@@ -134,7 +147,18 @@ python -X utf8 "<CLAUDE_PLUGIN_ROOT>/scripts/webnovel.py" --project-root "<PROJE
 | `doctor` | 阶段感知项目体检（目录、文件、DB、RAG、依赖、Dashboard） |
 | `write-gate` | 写章自然边界校验（`prewrite` / `precommit` / `postcommit`） |
 | `projections` | 从已有 commit 补跑或重放 projection |
+| `user-report` | 渲染作者友好的最终报告，可输出 text/json |
+| `run-ledger` | 记录写章步骤状态，或生成 `/webnovel-write` 断点续跑建议 |
+| `run-log` | 写入脱敏运行日志 `.webnovel/logs/run_last.log` |
 | `use <路径>` | 绑定当前工作区使用的书项目 |
+
+示例：
+
+```bash
+python -X utf8 "<CLAUDE_PLUGIN_ROOT>/scripts/webnovel.py" --project-root "<PROJECT_ROOT>" user-report --stage write --chapter 12 --format text
+python -X utf8 "<CLAUDE_PLUGIN_ROOT>/scripts/webnovel.py" --project-root "<PROJECT_ROOT>" run-ledger write-resume --chapter 12 --format text
+python -X utf8 "<CLAUDE_PLUGIN_ROOT>/scripts/webnovel.py" --project-root "<PROJECT_ROOT>" run-log --event write_failed --payload-json "{\"chapter\":12,\"reason\":\"projection timeout\"}"
+```
 
 ### 数据模块子命令
 
@@ -188,6 +212,10 @@ python -X utf8 "<CLAUDE_PLUGIN_ROOT>/scripts/webnovel.py" --project-root "<PROJE
 | `write-gate --chapter N --stage postcommit` | 提交后检查 commit 与 projection 状态 |
 | `projections retry --chapter N` | 基于已有 commit 补跑单章 projection |
 | `projections replay --from-chapter A --to-chapter B` | 按章节范围重放 projection |
+| `user-report --stage write --chapter N` | 汇总本次写章产物、问题和下一步建议 |
+| `run-ledger record-write-step --chapter N` | 记录写章关键步骤的状态、输入输出、问题和耗时 |
+| `run-ledger write-resume --chapter N` | 根据可信断点输出续跑建议，不自动覆盖文件 |
+| `run-log --event <name>` | 写入脱敏日志，供不可恢复故障排查 |
 | `story-events --chapter N` | 查询指定章节事件 |
 | `story-events --health` | 事件链健康检查 |
 | `memory-contract` | 记忆合同管理 |

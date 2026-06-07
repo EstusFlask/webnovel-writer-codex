@@ -130,6 +130,30 @@
       "id": "dashboard_read_only",
       "type": "dashboard_read_only",
       "description": "Dashboard exposes GET-only API semantics."
+    },
+    {
+      "id": "user_report_minimal_review_skipped",
+      "type": "user_report_probe",
+      "scenario": "minimal_review_skipped",
+      "description": "/webnovel-write --minimal final report explains skipped reviewer instead of pretending full review passed."
+    },
+    {
+      "id": "user_report_missing_data_artifacts",
+      "type": "user_report_probe",
+      "scenario": "missing_data_artifacts",
+      "description": "Missing data-agent artifacts prevent a completed write report."
+    },
+    {
+      "id": "user_report_projection_retry_auto_handled",
+      "type": "user_report_probe",
+      "scenario": "projection_retry_auto_handled",
+      "description": "Projection retry success is reported as auto-handled."
+    },
+    {
+      "id": "user_report_review_blocking_must_handle",
+      "type": "user_report_probe",
+      "scenario": "review_blocking_must_handle",
+      "description": "Reviewer blocking issues are reported as must-handle."
     }
   ]
 }

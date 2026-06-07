@@ -244,6 +244,29 @@ test "$(basename "${PROJECT_ROOT}")" = "${PROJECT_SLUG}"
 
 恢复：只补缺失字段，不全量重问；只重跑最小步骤（文件缺失→重跑 `webnovel.py init`；总纲缺字段→只 patch 总纲；idea_bank 不一致→只重写该文件）；重新验证，全部通过后结束。
 
+## 作者友好过程提示与恢复契约
+
+初始化开始前先说明本次会经历：收集故事核心 -> 确认创意约束 -> 生成项目骨架 -> 写入初始故事档案 -> 验证能否进入规划。过程提示用作者语言，不直接输出原始 JSON、traceback 或长命令日志；技术详情写入 `.webnovel/logs/run_last.log`：
+
+```bash
+python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" run-log \
+  --event init-progress \
+  --payload-json "{\"stage\": \"init\"}" \
+  --format text
+```
+
+过程提示每次不超过两行，只说当前动作和影响，例如“正在生成项目骨架：会创建设定集、总纲和初始故事档案”。少打扰确认策略：默认继续收集和生成；只有核心设定、参考拆解采用、项目目录安全、写入 canon 前的最终方案需要用户拍板。
+
+需要用户裁决时使用有限选项，并说明每个选项影响；例如保留当前设定 / 修改局部 / 暂停初始化。卡住时必须说明卡点、已完成内容和恢复建议，例如“设定集已生成，Story System 初始档案缺失；重新运行 `/webnovel-init` 会只补缺失文件”。
+
+不可恢复故障才在最终报告提示 `.webnovel/logs/run_last.log`；平时只保留日志，不打扰作者。收尾必须调用作者报告 helper：
+
+```bash
+python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" user-report \
+  --stage init \
+  --format text
+```
+
 ## 作者友好最终报告契约
 
 最终回复必须面向作者，不输出原始 JSON、traceback 或长命令日志。使用固定三段式，并以一句总状态开头：

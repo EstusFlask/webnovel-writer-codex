@@ -289,6 +289,98 @@ def cmd_projections(args: argparse.Namespace) -> int:
     return 0 if report.get("ok") else 1
 
 
+def cmd_user_report(args: argparse.Namespace) -> int:
+    from .user_report import build_user_report, format_user_report
+
+    root = _resolve_root(args.project_root)
+    report = build_user_report(
+        root,
+        stage=args.stage,
+        chapter=args.chapter,
+        volume=args.volume,
+    )
+    print(format_user_report(report, args.format))
+    return 0
+
+
+def cmd_run_ledger(args: argparse.Namespace) -> int:
+    from .run_ledger import (
+        build_write_resume_plan,
+        format_resume_plan,
+        record_write_step,
+    )
+
+    root = _resolve_root(args.project_root)
+    if args.ledger_action == "record-write-step":
+        try:
+            inputs = json.loads(args.inputs_json)
+            outputs = json.loads(args.outputs_json)
+            problems = json.loads(args.problems_json)
+            auto_handled = json.loads(args.auto_handled_json)
+        except json.JSONDecodeError as exc:
+            print(f"ledger JSON 参数不合法: {exc}", file=sys.stderr)
+            return 2
+        if not isinstance(inputs, dict) or not isinstance(outputs, dict):
+            print("inputs-json / outputs-json 必须是 JSON object", file=sys.stderr)
+            return 2
+        if not isinstance(problems, list) or not isinstance(auto_handled, list):
+            print("problems-json / auto-handled-json 必须是 JSON list", file=sys.stderr)
+            return 2
+        entry = record_write_step(
+            root,
+            chapter=args.chapter,
+            step=args.step,
+            status=args.status,
+            mode=args.mode,
+            inputs={str(key): str(value) for key, value in inputs.items()},
+            outputs={str(key): str(value) for key, value in outputs.items()},
+            problems=[str(item) for item in problems],
+            auto_handled=[str(item) for item in auto_handled],
+            duration_ms=args.duration_ms,
+        )
+        if args.format == "json":
+            print(json.dumps(entry, ensure_ascii=False, indent=2))
+        else:
+            print(f"{entry['step']}: {entry['status']}")
+        return 0
+    if args.ledger_action == "write-resume":
+        report = build_write_resume_plan(
+            root,
+            chapter=args.chapter,
+            mode=args.mode,
+        )
+        print(format_resume_plan(report, args.format))
+        return 0
+    return 2
+
+
+def cmd_run_log(args: argparse.Namespace) -> int:
+    from .run_logger import write_run_log
+
+    try:
+        root = _resolve_root(args.project_root)
+    except FileNotFoundError:
+        root = normalize_windows_path(args.project_root).expanduser()
+        try:
+            root = root.resolve()
+        except Exception:
+            root = root
+    try:
+        payload = json.loads(args.payload_json)
+    except json.JSONDecodeError as exc:
+        print(f"payload-json 不是合法 JSON: {exc}", file=sys.stderr)
+        return 2
+    if not isinstance(payload, dict):
+        print("payload-json 必须是 JSON object", file=sys.stderr)
+        return 2
+    result = write_run_log(root, event=args.event, payload=payload, append=args.append)
+    if args.format == "json":
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        print(result["path"])
+    return 0
+
+
 def cmd_use(args: argparse.Namespace) -> int:
     project_root = normalize_windows_path(args.project_root).expanduser()
     try:
@@ -366,6 +458,40 @@ def main() -> None:
     p_projection_replay.add_argument("--to-chapter", type=int, required=True, help="结束章节号")
     p_projection_replay.add_argument("--format", choices=["json", "text"], default="json", help="输出格式")
     p_projection_replay.set_defaults(func=cmd_projections)
+
+    p_user_report = sub.add_parser("user-report", help="渲染作者友好的最终报告")
+    p_user_report.add_argument("--stage", choices=["init", "plan", "write", "review"], required=True, help="报告阶段")
+    p_user_report.add_argument("--chapter", type=int, default=None, help="目标章节号")
+    p_user_report.add_argument("--volume", type=int, default=None, help="目标卷号")
+    p_user_report.add_argument("--format", choices=["text", "json"], default="text", help="输出格式")
+    p_user_report.set_defaults(func=cmd_user_report)
+
+    p_run_ledger = sub.add_parser("run-ledger", help="记录或查询写章断点续跑状态")
+    run_ledger_sub = p_run_ledger.add_subparsers(dest="ledger_action", required=True)
+    p_record_write_step = run_ledger_sub.add_parser("record-write-step", help="记录写章步骤状态")
+    p_record_write_step.add_argument("--chapter", type=int, required=True, help="目标章节号")
+    p_record_write_step.add_argument("--step", choices=["draft", "review", "data", "commit", "projection", "backup"], required=True)
+    p_record_write_step.add_argument("--status", required=True)
+    p_record_write_step.add_argument("--mode", default="default")
+    p_record_write_step.add_argument("--inputs-json", default="{}")
+    p_record_write_step.add_argument("--outputs-json", default="{}")
+    p_record_write_step.add_argument("--problems-json", default="[]")
+    p_record_write_step.add_argument("--auto-handled-json", default="[]")
+    p_record_write_step.add_argument("--duration-ms", type=int, default=0)
+    p_record_write_step.add_argument("--format", choices=["json", "text"], default="json", help="输出格式")
+    p_record_write_step.set_defaults(func=cmd_run_ledger)
+    p_write_resume = run_ledger_sub.add_parser("write-resume", help="输出写章断点续跑建议")
+    p_write_resume.add_argument("--chapter", type=int, required=True, help="目标章节号")
+    p_write_resume.add_argument("--mode", default="default", help="写章模式")
+    p_write_resume.add_argument("--format", choices=["json", "text"], default="json", help="输出格式")
+    p_write_resume.set_defaults(func=cmd_run_ledger)
+
+    p_run_log = sub.add_parser("run-log", help="写入脱敏运行日志")
+    p_run_log.add_argument("--event", required=True, help="事件名")
+    p_run_log.add_argument("--payload-json", default="{}", help="要写入日志的 JSON 对象")
+    p_run_log.add_argument("--append", action="store_true", help="追加而不是覆盖 run_last.log")
+    p_run_log.add_argument("--format", choices=["json", "text"], default="json", help="输出格式")
+    p_run_log.set_defaults(func=cmd_run_log)
 
     p_use = sub.add_parser("use", help="绑定当前工作区使用的书项目（写入指针/registry）")
     p_use.add_argument("project_root", help="书项目根目录（必须包含 .webnovel/state.json）")

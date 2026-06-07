@@ -232,6 +232,30 @@ python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" sto
 2. 最后一个批次无效时，只删除并重写该批次。
 3. 仅在全部验证通过后更新状态。
 
+## 作者友好过程提示与恢复契约
+
+规划开始前先说明本次会经历：检查总纲与设定 -> 生成节拍表 -> 生成时间线 -> 拆章纲 -> 写回新增设定 -> 刷新写作合同。过程提示用作者语言，不直接输出原始 JSON、traceback 或长命令日志；技术详情写入 `.webnovel/logs/run_last.log`：
+
+```bash
+python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" run-log \
+  --event plan-progress \
+  --payload-json "{\"stage\": \"plan\", \"volume\": {volume_id}}" \
+  --format text
+```
+
+过程提示每次不超过两行，只说当前动作和影响，例如“正在拆本卷章纲：会把每章目标、时间锚点和禁区写清楚”。少打扰确认策略：默认继续推进；只有总纲 / 设定冲突、时间线回跳、卷末钩子取舍、需要覆盖已有规划时才询问。
+
+需要用户裁决时使用有限选项，并说明影响；例如沿用总纲 / 修改设定 / 暂停规划。卡住时必须说明卡点、已完成内容和恢复建议，例如“节拍表和时间线已保留，第 21-30 章拆分失败；重新运行 `/webnovel-plan {volume_id}` 会只重做失败批次”。
+
+不可恢复故障才在最终报告提示 `.webnovel/logs/run_last.log`；平时只保留日志，不打扰作者。收尾必须调用作者报告 helper：
+
+```bash
+python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" user-report \
+  --stage plan \
+  --volume {volume_id} \
+  --format text
+```
+
 ## 作者友好最终报告契约
 
 最终回复必须面向作者，不输出原始 JSON、traceback 或长命令日志。使用固定三段式，并以一句总状态开头：

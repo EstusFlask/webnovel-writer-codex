@@ -274,6 +274,52 @@ python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" bac
 
 备份必须以解析后的 `PROJECT_ROOT` 为准，禁止从工作区父目录执行裸全量 Git add，避免把书项目仓库作为父仓库的嵌入仓库/submodule 加入。
 
+## 作者友好过程提示与恢复契约
+
+开始写章前先用作者语言说明本次目标、主要阶段和是否需要守在旁边，不承诺固定耗时。过程提示只说当前在做什么和会产生什么，不直接输出原始 JSON、traceback 或长命令日志；技术详情写入 `.webnovel/logs/run_last.log`：
+
+```bash
+python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" run-log \
+  --event write-start \
+  --payload-json "{\"chapter\": {chapter_num}, \"mode\": \"{mode}\"}" \
+  --format text
+```
+
+写章过程节点（最多 6 个）：
+
+1. 检查项目环境：确认项目、占位符和本章要求可用。
+2. 整理写作依据：读取章纲、最近剧情和未回收伏笔。
+3. 起草正文：根据写作任务书生成本章正文。
+4. 写作检查：审查阻断问题和高收益修改建议。
+5. 保存本章故事事实：提取本章目标完成情况、歧义和新事实。
+6. 提交备份：把本章事实入账、更新故事资料并备份。
+
+重复执行同一章时，先读取可信断点：
+
+```bash
+python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" run-ledger write-resume \
+  --chapter {chapter_num} \
+  --mode "{mode}" \
+  --format json
+```
+
+`run-ledger write-resume` 只给续跑建议，不自动覆盖文件。它会根据正文、审查结果、data artifacts、commit、projection 和备份状态判断从哪里继续。正文被手动改过、章纲更新晚于正文、本章已 accepted 又重跑时，必须停下用有限选项询问：沿用当前正文 / 重新起草 / 只查看状态；不得覆盖作者手改。
+
+每个关键步骤完成后记录 `run-ledger record-write-step`，至少记录 step、status、输入/输出文件路径、problems、auto_handled 和 duration_ms，供下一次续跑和最终报告使用。
+
+少打扰确认策略：默认继续推进；只有创作方向、事实一致性、文件覆盖风险或 blocking issue 无法定点处理时才问。需要用户裁决时给 2-3 个有限选项，并说明每个选项影响。
+
+卡住时必须说明卡点、已完成内容和恢复建议：例如“正文和审查报告已保留，保存本章故事事实失败；重新运行 `/webnovel-write {chapter_num}` 会从 data-agent 继续”。不可恢复故障才在最终报告提示 `.webnovel/logs/run_last.log`；平时只保留日志，不打扰作者。
+
+收尾必须调用作者报告 helper，优先以 helper 输出组织最终回复：
+
+```bash
+python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" user-report \
+  --stage write \
+  --chapter {chapter_num} \
+  --format text
+```
+
 ## 充分性闸门
 
 1. 正文文件存在且非空

@@ -230,6 +230,152 @@ def _eval_dashboard_read_only(root: Path, case: dict[str, Any]) -> dict[str, Any
     )
 
 
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _make_report_project(project_root: Path) -> None:
+    for rel in (
+        ".webnovel/tmp",
+        ".webnovel/backups",
+        ".story-system/commits",
+        "正文",
+        "审查报告",
+    ):
+        (project_root / rel).mkdir(parents=True, exist_ok=True)
+    _write_json(
+        project_root / ".webnovel" / "state.json",
+        {"project_info": {"title": "测试书", "genre": "玄幻"}, "progress": {"current_chapter": 0}},
+    )
+
+
+def _write_report_artifacts(project_root: Path, *, chapter: int = 1, review_skipped: bool = False, blocking: bool = False) -> None:
+    issues = []
+    if blocking:
+        issues.append(
+            {
+                "severity": "critical",
+                "category": "timeline",
+                "location": "第2段",
+                "description": "时间线断裂",
+                "fix_hint": "补过渡",
+                "blocking": True,
+            }
+        )
+    review = {
+        "chapter": chapter,
+        "issues": issues,
+        "issues_count": len(issues),
+        "blocking_count": 1 if blocking else 0,
+        "has_blocking": bool(blocking),
+        "summary": "minimal mode: reviewer skipped" if review_skipped else "ok",
+    }
+    if review_skipped:
+        review["review_skipped"] = True
+        review["review_mode"] = "minimal"
+    _write_json(project_root / ".webnovel" / "tmp" / "review_results.json", review)
+    _write_json(
+        project_root / ".webnovel" / "tmp" / "review_metrics.json",
+        {
+            "start_chapter": chapter,
+            "end_chapter": chapter,
+            "issues_count": len(issues),
+            "blocking_count": 1 if blocking else 0,
+            "report_file": f"审查报告/第{chapter}章审查报告.md",
+        },
+    )
+    (project_root / "审查报告" / f"第{chapter}章审查报告.md").write_text("# 审查报告\n", encoding="utf-8")
+    _write_json(
+        project_root / ".webnovel" / "tmp" / "fulfillment_result.json",
+        {"planned_nodes": [], "covered_nodes": [], "missed_nodes": [], "extra_nodes": []},
+    )
+    _write_json(project_root / ".webnovel" / "tmp" / "disambiguation_result.json", {"pending": []})
+    _write_json(
+        project_root / ".webnovel" / "tmp" / "extraction_result.json",
+        {"accepted_events": [], "state_deltas": [], "entity_deltas": [], "summary_text": "摘要"},
+    )
+
+
+def _commit_payload(*, chapter: int = 1, status: str = "accepted", projection_status: dict[str, str] | None = None) -> dict[str, Any]:
+    return {
+        "meta": {"chapter": chapter, "status": status},
+        "review_result": {"blocking_count": 0},
+        "fulfillment_result": {"planned_nodes": [], "covered_nodes": [], "missed_nodes": [], "extra_nodes": []},
+        "disambiguation_result": {"pending": []},
+        "extraction_result": {"accepted_events": [], "state_deltas": [], "entity_deltas": [], "summary_text": "摘要"},
+        "projection_status": projection_status
+        or {"state": "done", "index": "skipped", "summary": "skipped", "memory": "skipped", "vector": "skipped"},
+    }
+
+
+def _eval_user_report_probe(root: Path, case: dict[str, Any]) -> dict[str, Any]:
+    scripts_dir = _plugin_root(root) / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from data_modules.projection_log import append_projection_run
+    from data_modules.user_report import build_user_report, render_user_report_text
+
+    scenario = str(case.get("scenario") or "")
+    with tempfile.TemporaryDirectory() as tmp:
+        project_root = Path(tmp)
+        _make_report_project(project_root)
+        chapter_file = project_root / "正文" / "第0001章.md"
+        chapter_file.write_text("正文\n", encoding="utf-8")
+        _write_report_artifacts(project_root, chapter=1)
+        commit_path = project_root / ".story-system" / "commits" / "chapter_001.commit.json"
+
+        if scenario == "minimal_review_skipped":
+            _write_report_artifacts(project_root, chapter=1, review_skipped=True)
+            _write_json(commit_path, _commit_payload())
+            (project_root / ".webnovel" / "backups" / "ch0001_ok").mkdir(parents=True, exist_ok=True)
+            report = build_user_report(project_root, stage="write", chapter=1)
+            text = render_user_report_text(report)
+            ok = report["overall_status"] == "partial" and "review_skipped" in json.dumps(report, ensure_ascii=False) and "minimal" in text
+            evidence = [report["overall_status"], text]
+        elif scenario == "missing_data_artifacts":
+            for rel in ("fulfillment_result.json", "disambiguation_result.json", "extraction_result.json"):
+                path = project_root / ".webnovel" / "tmp" / rel
+                if path.exists():
+                    path.unlink()
+            report = build_user_report(project_root, stage="write", chapter=1)
+            ok = report["overall_status"] != "completed" and bool(report["issues"]["must_handle"])
+            evidence = [report["overall_status"], json.dumps(report["issues"], ensure_ascii=False)]
+        elif scenario == "projection_retry_auto_handled":
+            failed_payload = _commit_payload(projection_status={"state": "done", "index": "failed:locked", "summary": "skipped", "memory": "skipped", "vector": "skipped"})
+            _write_json(commit_path, failed_payload)
+            append_projection_run(project_root, failed_payload, {"index": {"status": "failed:locked"}}, commit_path=commit_path)
+            append_projection_run(
+                project_root,
+                failed_payload,
+                {
+                    "state": {"status": "done"},
+                    "index": {"status": "skipped"},
+                    "summary": {"status": "skipped"},
+                    "memory": {"status": "skipped"},
+                    "vector": {"status": "skipped"},
+                },
+                commit_path=commit_path,
+            )
+            (project_root / ".webnovel" / "backups" / "ch0001_ok").mkdir(parents=True, exist_ok=True)
+            report = build_user_report(project_root, stage="write", chapter=1)
+            ok = any(item.get("code") == "projection retry" for item in report["issues"]["auto_handled"]) and not report["issues"]["must_handle"]
+            evidence = [json.dumps(report["issues"], ensure_ascii=False)]
+        elif scenario == "review_blocking_must_handle":
+            _write_report_artifacts(project_root, chapter=1, blocking=True)
+            report = build_user_report(project_root, stage="review", chapter=1)
+            ok = report["overall_status"] == "needs_user" and any(item.get("code") == "blocking_review" for item in report["issues"]["must_handle"])
+            evidence = [json.dumps(report["issues"], ensure_ascii=False)]
+        else:
+            return _result(case, passed=False, reason=f"unknown user_report scenario: {scenario}")
+    return _result(
+        case,
+        passed=ok,
+        reason=f"user-report probe {scenario} passed" if ok else f"user-report probe {scenario} failed",
+        evidence=evidence,
+    )
+
+
 EVALUATORS = {
     "skill_frontmatter": _eval_skill_frontmatter,
     "skill_contract": _eval_skill_contract,
@@ -238,6 +384,7 @@ EVALUATORS = {
     "artifact_ownership": _eval_artifact_ownership,
     "commit_projection_runtime": _eval_commit_projection_runtime,
     "dashboard_read_only": _eval_dashboard_read_only,
+    "user_report_probe": _eval_user_report_probe,
 }
 
 

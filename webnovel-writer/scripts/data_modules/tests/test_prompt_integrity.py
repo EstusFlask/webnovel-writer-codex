@@ -50,7 +50,8 @@ SUBAGENT_PROMPT_FILES = (
 
 # webnovel.py 注册的子命令（从 add_parser 提取）
 REGISTERED_CLI_SUBCOMMANDS = {
-    "where", "preflight", "project-status", "doctor", "write-gate", "projections", "use",
+    "where", "preflight", "project-status", "doctor", "write-gate", "projections", "user-report",
+    "run-ledger", "run-log", "use",
     "index", "state", "rag", "style", "entity", "context", "memory",
     "migrate", "status", "update-state", "backup", "archive",
     "init", "extract-context", "memory-contract", "project-memory", "review-pipeline",
@@ -400,6 +401,57 @@ def test_agents_expose_subagent_run_summary_signals_without_changing_outputs(age
         assert "不要把 `SubagentRun` 写进 `init_reference_research` 顶层" in text
     elif agent_file_name == "context-agent.md":
         assert "不要把 `SubagentRun` JSON 写入任务书" in text
+
+
+@pytest.mark.parametrize("skill_name", AUTHOR_REPORT_SKILLS)
+def test_main_skills_define_author_friendly_progress_and_recovery_contract(skill_name: str):
+    """四个主 Skill 必须有过程提示、少打扰确认、卡住恢复和日志边界。"""
+    text = _read_text(SKILLS_DIR / skill_name / "SKILL.md")
+
+    for required in (
+        "作者友好过程提示与恢复契约",
+        "过程提示",
+        "少打扰确认策略",
+        "有限选项",
+        "卡住时必须说明",
+        "卡点",
+        "已完成内容",
+        "恢复建议",
+        ".webnovel/logs/run_last.log",
+        "run-log",
+        "user-report",
+    ):
+        assert required in text, f"{skill_name}: 缺少过程/恢复契约 {required}"
+    assert "不直接输出原始 JSON" in text or "不输出原始 JSON" in text
+
+
+def test_write_skill_progress_nodes_are_author_friendly_and_limited():
+    """写章过程节点必须压缩到不超过 6 个作者可理解阶段。"""
+    text = _read_text(SKILLS_DIR / "webnovel-write" / "SKILL.md")
+    marker = "写章过程节点（最多 6 个）"
+    assert marker in text
+    section = text[text.find(marker): text.find("## 充分性闸门")]
+    nodes = re.findall(r"^\d+\.\s+(.+)$", section, flags=re.MULTILINE)
+    assert 1 <= len(nodes) <= 6
+    for forbidden in ("write-gate", "chapter-commit", "projection_status", "artifact", "schema"):
+        assert forbidden not in "\n".join(nodes)
+    for friendly in ("检查项目环境", "整理写作依据", "起草正文", "写作检查", "保存本章故事事实", "提交备份"):
+        assert any(friendly in node for node in nodes), f"缺少作者友好节点 {friendly}"
+
+
+def test_write_skill_resume_contract_uses_runtime_ledger_and_confirmation_boundaries():
+    """写章重复执行必须先查可信断点，且在覆盖风险处停下确认。"""
+    text = _read_text(SKILLS_DIR / "webnovel-write" / "SKILL.md")
+    for required in (
+        "run-ledger write-resume",
+        "可信断点",
+        "正文被手动改过",
+        "章纲更新晚于正文",
+        "本章已 accepted",
+        "沿用当前正文 / 重新起草 / 只查看状态",
+        "不得覆盖作者手改",
+    ):
+        assert required in text
 
 
 def test_story_system_runtime_contract_commands_exist():

@@ -126,6 +126,30 @@ python "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" update-stat
 4. 审查记录已写入 `.webnovel/state.json` 兼容投影。
 5. 存在阻断问题时，用户已明确选择处理策略。
 
+## 作者友好过程提示与恢复契约
+
+审查开始前先说明本次会经历：定位待审正文 -> 刷新缺失合同 -> 写作检查 -> 生成报告和指标 -> 处理阻断裁决。过程提示用作者语言，不直接输出原始 JSON、traceback 或长命令日志；技术详情写入 `.webnovel/logs/run_last.log`：
+
+```bash
+python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" run-log \
+  --event review-progress \
+  --payload-json "{\"stage\": \"review\", \"chapter\": {chapter_num}}" \
+  --format text
+```
+
+过程提示每次不超过两行，只说当前动作和影响，例如“正在生成审查报告：会把阻断问题和最值得改的建议放到顶部”。少打扰确认策略：无阻断时不询问；存在 blocking issue、缺待审正文、用户要求是否立即修改时才询问。
+
+需要用户裁决时使用有限选项，并说明影响；例如立即修复 / 仅保存报告稍后处理 / 放弃本次审查。卡住时必须说明卡点、已完成内容和恢复建议，例如“reviewer 结果已保存，metrics 落库失败；重新运行 `/webnovel-review {chapter_num}` 会从报告落库继续”。
+
+不可恢复故障才在最终报告提示 `.webnovel/logs/run_last.log`；平时只保留日志，不打扰作者。收尾必须调用作者报告 helper：
+
+```bash
+python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" user-report \
+  --stage review \
+  --chapter {chapter_num} \
+  --format text
+```
+
 ## 作者友好最终报告契约
 
 最终回复必须面向作者，不输出原始 JSON、traceback 或长命令日志。使用固定三段式，并以一句总状态开头：
