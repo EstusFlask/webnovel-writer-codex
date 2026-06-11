@@ -119,8 +119,8 @@ def rollback(self, chapter: int) -> bool:
 - Modify: `webnovel-writer/scripts/data_modules/state_manager.py:393-416, 450-451, 606-609`
 - Test: `webnovel-writer/scripts/data_modules/tests/test_state_manager_extra.py`
 
-- [ ] `_sync_to_sqlite` 失败时：`save_state` 返回值携带 `sqlite_sync_ok=False`；`process-chapter` CLI 据此 `emit_error`（退出码非 0），错误信息提示运行 `webnovel.py projections retry --chapter N` 补偿。测试：monkeypatch `_sync_pending_patches_to_sqlite` 抛异常，断言 CLI 退出非 0 且 stdout JSON 含补偿指引。
-- [ ] 提交 `fix: surface sqlite sync failures in process-chapter`。
+- [x] `_sync_to_sqlite` 失败时：`save_state` 返回值携带 `sqlite_sync_ok=False`；`process-chapter` CLI 据此 `emit_error`（退出码非 0），错误信息提示运行 `webnovel.py projections retry --chapter N` 补偿。测试：monkeypatch `_sync_pending_patches_to_sqlite` 抛异常，断言 CLI 退出非 0 且 stdout JSON 含补偿指引。
+- [x] 提交 `fix: surface sqlite sync failures in process-chapter`。
 
 ### Task 8: get_state_changes / get_relationships 走 SQLite 回退
 

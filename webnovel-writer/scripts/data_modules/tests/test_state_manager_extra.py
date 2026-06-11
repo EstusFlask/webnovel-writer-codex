@@ -612,6 +612,49 @@ def test_state_manager_cli_commands(temp_project, monkeypatch, capsys):
     assert out["status"] == "success"
 
 
+def test_process_chapter_cli_fails_when_sqlite_sync_fails(temp_project, monkeypatch, capsys):
+    if not temp_project.state_file.exists():
+        temp_project.state_file.write_text("{}", encoding="utf-8")
+
+    from data_modules import state_manager as sm
+
+    def fail_sync(self, processed_appearances=None):
+        raise RuntimeError("sqlite sync boom")
+
+    payload = json.dumps(
+        {
+            "entities_appeared": [],
+            "entities_new": [],
+            "state_changes": [],
+            "relationships_new": [],
+        }
+    )
+    monkeypatch.setattr(sm.StateManager, "_sync_pending_patches_to_sqlite", fail_sync)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "state_manager",
+            "--project-root",
+            str(temp_project.project_root),
+            "process-chapter",
+            "--chapter",
+            "7",
+            "--data",
+            payload,
+        ],
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        sm.main()
+
+    assert int(exc.value.code or 0) == 1
+    out = json.loads(capsys.readouterr().out)
+    assert out["status"] == "error"
+    assert out["error"]["code"] == "SQLITE_SYNC_FAILED"
+    assert "webnovel.py projections retry --chapter 7" in out["error"]["suggestion"]
+
+
 def test_state_manager_cli_rejects_json_file_outside_resolved_book_root(tmp_path, monkeypatch):
     from data_modules.config import DataModulesConfig
 

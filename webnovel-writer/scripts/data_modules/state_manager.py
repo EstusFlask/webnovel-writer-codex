@@ -226,7 +226,7 @@ class StateManager:
         else:
             self._state = self._ensure_state_schema({})
 
-    def save_state(self):
+    def save_state(self) -> Dict[str, Any]:
         """
         保存状态文件（锁内重读 + 合并 + 原子写入）。
 
@@ -252,7 +252,7 @@ class StateManager:
             ]
         )
         if not has_pending:
-            return
+            return {"saved": False, "sqlite_sync_ok": True}
 
         self.config.ensure_dirs()
 
@@ -415,6 +415,8 @@ class StateManager:
                 else:
                     self._restore_sqlite_pending(sqlite_pending_snapshot)
 
+                return {"saved": True, "sqlite_sync_ok": sqlite_sync_ok}
+
         except filelock.Timeout:
             raise RuntimeError("无法获取 state.json 文件锁，请稍后重试")
 
@@ -453,7 +455,11 @@ class StateManager:
 
         # 方式2: 使用 add_entity/update_entity 收集的增量数据。
         # 数据缓存在 _pending_entity_patches 等变量中。
-        return self._sync_pending_patches_to_sqlite(processed_appearances)
+        try:
+            return self._sync_pending_patches_to_sqlite(processed_appearances)
+        except Exception as exc:
+            logger.warning("SQLite sync failed (pending patches): %s", exc)
+            return False
 
     def _sync_pending_patches_to_sqlite(self, processed_appearances: set = None) -> bool:
         """同步 _pending_entity_patches 等到 SQLite（v5.1 引入，v5.4 沿用）
@@ -1471,7 +1477,15 @@ def main():
             return
 
         warnings = manager.process_chapter_result(args.chapter, validated.model_dump(by_alias=True))
-        manager.save_state()
+        save_result = manager.save_state()
+        if not save_result.get("sqlite_sync_ok", True):
+            emit_error(
+                "SQLITE_SYNC_FAILED",
+                "章节状态已写入 state.json，但 SQLite 同步失败",
+                suggestion=f"请运行 webnovel.py projections retry --chapter {args.chapter} 补偿投影",
+                chapter=args.chapter,
+            )
+            raise SystemExit(1)
         emit_success({"chapter": args.chapter, "warnings": warnings}, message="chapter_processed", chapter=args.chapter)
 
     elif args.command == "get-chapter-status":
