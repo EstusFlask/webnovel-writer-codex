@@ -297,10 +297,16 @@ def _write_report_artifacts(project_root: Path, *, chapter: int = 1, review_skip
     )
 
 
-def _commit_payload(*, chapter: int = 1, status: str = "accepted", projection_status: dict[str, str] | None = None) -> dict[str, Any]:
+def _commit_payload(
+    *,
+    chapter: int = 1,
+    status: str = "accepted",
+    projection_status: dict[str, str] | None = None,
+    review_result: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     return {
         "meta": {"chapter": chapter, "status": status},
-        "review_result": {"blocking_count": 0},
+        "review_result": review_result or {"blocking_count": 0},
         "fulfillment_result": {"planned_nodes": [], "covered_nodes": [], "missed_nodes": [], "extra_nodes": []},
         "disambiguation_result": {"pending": []},
         "extraction_result": {"accepted_events": [], "state_deltas": [], "entity_deltas": [], "summary_text": "摘要"},
@@ -327,7 +333,17 @@ def _eval_user_report_probe(root: Path, case: dict[str, Any]) -> dict[str, Any]:
 
         if scenario == "minimal_review_skipped":
             _write_report_artifacts(project_root, chapter=1, review_skipped=True)
-            _write_json(commit_path, _commit_payload())
+            _write_json(
+                commit_path,
+                _commit_payload(
+                    review_result={
+                        "blocking_count": 0,
+                        "review_skipped": True,
+                        "review_mode": "minimal",
+                        "summary": "minimal mode: reviewer skipped",
+                    }
+                ),
+            )
             (project_root / ".webnovel" / "backups" / "ch0001_ok").mkdir(parents=True, exist_ok=True)
             report = build_user_report(project_root, stage="write", chapter=1)
             text = render_user_report_text(report)
