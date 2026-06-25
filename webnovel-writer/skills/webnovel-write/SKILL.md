@@ -1,6 +1,7 @@
 ---
+# Codex/Windows: if PowerShell shows mojibake, reread with Get-Content -Raw -Encoding UTF8 -LiteralPath <path>.
 name: webnovel-write
-description: 产出可发布章节，完整执行上下文→起草→审查→润色→提交→备份。
+description: "Codex/Windows UTF-8 read guard: when opening this SKILL.md from PowerShell, use Get-Content -Raw -Encoding UTF8 -LiteralPath <path>. 产出可发布章节，完整执行上下文→起草→审查→润色→提交→备份。"
 allowed-tools: Read Write Edit Grep Bash Agent AskUserQuestion
 argument-hint: "[章号] [--fast|--minimal]"
 ---
