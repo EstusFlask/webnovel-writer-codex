@@ -21,6 +21,8 @@ export SCRIPTS_DIR="${WEBNOVEL_PLUGIN_ROOT}/scripts"
 
 If Codex loaded this skill from an installed plugin path, infer `WEBNOVEL_PLUGIN_ROOT` by walking upward from this `SKILL.md` path to the directory containing `.codex-plugin/plugin.json`. Do not use the book project directory as the plugin root.
 
+On Windows PowerShell, read plugin Markdown with explicit UTF-8, for example `Get-Content -Raw -Encoding UTF8 -LiteralPath <path>`. If a read shows common mojibake markers such as U+9225, U+9239, U+951F/U+65A4/U+62F7, or U+FFFD, treat it as an encoding/display problem and retry with explicit UTF-8 before concluding the skill file is corrupted.
+
 Claude Code still uses `CLAUDE_PLUGIN_ROOT` and `CLAUDE_PROJECT_DIR`; keep those variables working for Claude users.
 
 ## First Checks

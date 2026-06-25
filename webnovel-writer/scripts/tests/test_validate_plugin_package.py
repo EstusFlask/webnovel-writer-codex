@@ -111,3 +111,25 @@ def test_validate_plugin_package_detects_missing_skill_frontmatter(tmp_path):
 
     assert report["ok"] is False
     assert any(item["code"] == "skill.frontmatter" for item in report["issues"])
+
+
+def test_validate_plugin_package_detects_non_utf8_skill_text(tmp_path):
+    _write_minimal_package(tmp_path)
+    skill = tmp_path / "webnovel-writer" / "skills" / "demo" / "SKILL.md"
+    skill.write_bytes("---\nname: demo\ndescription: 写章\n---\n".encode("gbk"))
+
+    report = validate_package(tmp_path)
+
+    assert report["ok"] is False
+    assert any(item["code"] == "text.encoding" and str(skill) == item["path"] for item in report["issues"])
+
+
+def test_validate_plugin_package_detects_mojibake_skill_text(tmp_path):
+    _write_minimal_package(tmp_path)
+    skill = tmp_path / "webnovel-writer" / "skills" / "demo" / "SKILL.md"
+    skill.write_text("---\nname: demo\ndescription: demo\n---\n\n# Demo\n\nUse domains\u9225\u6516asks.\n", encoding="utf-8")
+
+    report = validate_package(tmp_path)
+
+    assert report["ok"] is False
+    assert any(item["code"] == "text.mojibake" and str(skill) == item["path"] for item in report["issues"])

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import sync_plugin_version
+from runtime_compat import enable_windows_utf8_stdio
 
 
 SCHEMA_VERSION = "webnovel-plugin-package-validator/v1"
@@ -17,6 +18,8 @@ PLUGIN_NAME = "webnovel-writer"
 KEBAB_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SEMVER_RE = sync_plugin_version.VERSION_PATTERN
 LOCAL_ABSOLUTE_RE = re.compile(r"(?i)(?:[a-z]:\\users\\|/users/[^/\s]+/|/home/[^/\s]+/)")
+TEXT_SUFFIXES = {".csv", ".json", ".md", ".py", ".sh", ".yaml", ".yml"}
+MOJIBAKE_MARKERS = ("\ufffd", "\u9225", "\u9239", "\u951f\u65a4\u62f7")
 
 
 def _issue(
@@ -41,6 +44,8 @@ def _load_json(path: Path) -> tuple[dict[str, Any], str]:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
         return {}, "missing"
+    except UnicodeDecodeError as exc:
+        return {}, f"invalid_utf8:{exc}"
     except json.JSONDecodeError as exc:
         return {}, f"invalid_json:{exc}"
     except OSError as exc:
@@ -53,6 +58,8 @@ def _load_json(path: Path) -> tuple[dict[str, Any], str]:
 def _frontmatter(path: Path) -> dict[str, str]:
     try:
         text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return {}
     except OSError:
         return {}
     if not text.startswith("---"):
@@ -176,6 +183,71 @@ def _check_readme_version(root: Path, plugin_version: str, issues: list[dict[str
         )
 
 
+def _iter_plugin_text_files(root: Path) -> list[Path]:
+    plugin_root = _plugin_root(root)
+    roots = [
+        plugin_root / ".claude-plugin",
+        plugin_root / "adapters",
+        plugin_root / "agents",
+        plugin_root / "hooks",
+        plugin_root / "references",
+        plugin_root / "scripts",
+        plugin_root / "skills",
+        plugin_root / "templates",
+    ]
+    files = [plugin_root / "README.md", plugin_root / "LICENSE"]
+    marketplace = _repo_root(root) / ".claude-plugin" / "marketplace.json"
+    if marketplace.is_file():
+        files.append(marketplace)
+    for base in roots:
+        if base.is_dir():
+            files.extend(path for path in base.rglob("*") if path.is_file() and path.suffix.lower() in TEXT_SUFFIXES)
+    return sorted({path for path in files if path.is_file()})
+
+
+def _check_text_encoding(root: Path, issues: list[dict[str, str]]) -> None:
+    for path in _iter_plugin_text_files(root):
+        try:
+            raw = path.read_bytes()
+        except OSError as exc:
+            issues.append(_issue("text.read", message=str(exc), path=str(path), repair="确认发布文件可读。"))
+            continue
+        if raw.startswith(b"\xef\xbb\xbf"):
+            severity = "error" if path.name == "SKILL.md" or path.suffix.lower() == ".json" else "warning"
+            issues.append(
+                _issue(
+                    "text.utf8_bom",
+                    message="UTF-8 BOM found",
+                    severity=severity,
+                    path=str(path),
+                    repair="以 UTF-8 无 BOM 保存插件文本文件，避免 frontmatter/manifest 解析漂移。",
+                )
+            )
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            issues.append(
+                _issue(
+                    "text.encoding",
+                    message=f"file is not strict UTF-8: {exc}",
+                    path=str(path),
+                    repair="用 UTF-8 无 BOM 重新保存该文件；Windows PowerShell 读取时使用 Get-Content -Encoding UTF8。",
+                )
+            )
+            continue
+        for marker in MOJIBAKE_MARKERS:
+            if marker in text:
+                issues.append(
+                    _issue(
+                        "text.mojibake",
+                        message=f"possible mojibake marker found: {marker}",
+                        path=str(path),
+                        repair="检查是否曾被 ANSI/GBK/Windows-1252 错误解码后保存，并用原始中文 UTF-8 内容替换。",
+                    )
+                )
+                break
+
+
 def _check_frontmatter(root: Path, issues: list[dict[str, str]]) -> None:
     plugin_root = _plugin_root(root)
     for skill in sorted((plugin_root / "skills").glob("*/SKILL.md")):
@@ -217,6 +289,8 @@ def _check_portability(root: Path, issues: list[dict[str, str]]) -> None:
     for path in targets:
         try:
             text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
         except OSError:
             continue
         if LOCAL_ABSOLUTE_RE.search(text):
@@ -237,6 +311,7 @@ def validate_package(root: str | Path | None = None, *, strict: bool = False) ->
     _, plugin_version = _check_manifest(repo_root, issues)
     _check_marketplace(repo_root, plugin_version, issues)
     _check_readme_version(repo_root, plugin_version, issues)
+    _check_text_encoding(repo_root, issues)
     _check_frontmatter(repo_root, issues)
     _check_optional_assets(repo_root, issues)
     _check_portability(repo_root, issues)
@@ -272,6 +347,7 @@ def format_report(report: dict[str, Any], output_format: str = "text") -> str:
 
 
 def main() -> int:
+    enable_windows_utf8_stdio()
     parser = argparse.ArgumentParser(description="Validate webnovel-writer plugin package metadata and components")
     parser.add_argument("--root", default="", help="仓库根目录，默认自动推断")
     parser.add_argument("--strict", action="store_true", help="warning 也视为失败")
