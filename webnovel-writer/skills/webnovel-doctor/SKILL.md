@@ -24,8 +24,13 @@ argument-hint: "[--chapter N] [--deep]"
 准备路径：
 
 ```bash
-export WORKSPACE_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
-export SCRIPTS_DIR="${CLAUDE_PLUGIN_ROOT:?}/scripts"
+export WORKSPACE_ROOT="${CODEX_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$PWD}}"
+export WEBNOVEL_PLUGIN_ROOT="${WEBNOVEL_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"
+if [ -z "${WEBNOVEL_PLUGIN_ROOT}" ] || [ ! -d "${WEBNOVEL_PLUGIN_ROOT}/scripts" ]; then
+  echo "ERROR: 未设置 WEBNOVEL_PLUGIN_ROOT/CLAUDE_PLUGIN_ROOT 或缺少 scripts 目录" >&2
+  exit 1
+fi
+export SCRIPTS_DIR="${WEBNOVEL_PLUGIN_ROOT}/scripts"
 ```
 
 短状态：

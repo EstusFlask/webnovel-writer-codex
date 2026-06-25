@@ -1,0 +1,41 @@
+{
+  "name": "webnovel-writer",
+  "version": "6.2.0",
+  "description": "Long-form Chinese webnovel writing system with skills, runtime checks, RAG, memory, and dashboard.",
+  "author": {
+    "name": "lingfengQAQ",
+    "url": "https://github.com/lingfengQAQ"
+  },
+  "homepage": "https://github.com/lingfengQAQ/webnovel-writer",
+  "repository": "https://github.com/lingfengQAQ/webnovel-writer",
+  "license": "GPL-3.0",
+  "keywords": [
+    "webnovel",
+    "codex",
+    "skills",
+    "writing",
+    "rag",
+    "dashboard"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Webnovel Writer",
+    "shortDescription": "Plan, write, review, query, and inspect long-form webnovel projects",
+    "longDescription": "Use Webnovel Writer to initialize Chinese webnovel projects, plan volumes and chapters, write and review chapters, query story state, maintain long-term memory, and open a read-only dashboard while reusing the same Python runtime across hosts.",
+    "developerName": "lingfengQAQ",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/lingfengQAQ/webnovel-writer",
+    "defaultPrompt": [
+      "Use Webnovel Writer to inspect this novel project.",
+      "Run a webnovel doctor check for the current project.",
+      "Help me plan the next webnovel volume."
+    ],
+    "brandColor": "#2F6B4F",
+    "screenshots": []
+  }
+}

@@ -14,14 +14,19 @@ argument-hint: "[查询词，如 角色名/伏笔/境界]"
 ## 项目根保护
 
 ```bash
-export WORKSPACE_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
-export SCRIPTS_DIR="${CLAUDE_PLUGIN_ROOT}/scripts"
-export SKILL_ROOT="${CLAUDE_PLUGIN_ROOT}/skills/webnovel-query"
+export WORKSPACE_ROOT="${CODEX_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$PWD}}"
+export WEBNOVEL_PLUGIN_ROOT="${WEBNOVEL_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"
+if [ -z "${WEBNOVEL_PLUGIN_ROOT}" ] || [ ! -d "${WEBNOVEL_PLUGIN_ROOT}/scripts" ]; then
+  echo "ERROR: 未设置 WEBNOVEL_PLUGIN_ROOT/CLAUDE_PLUGIN_ROOT 或缺少 scripts 目录" >&2
+  exit 1
+fi
+export SCRIPTS_DIR="${WEBNOVEL_PLUGIN_ROOT}/scripts"
+export SKILL_ROOT="${WEBNOVEL_PLUGIN_ROOT}/skills/webnovel-query"
 export PROJECT_ROOT="$(python "${SCRIPTS_DIR}/webnovel.py" --project-root "${WORKSPACE_ROOT}" where)"
 ```
 
 - `PROJECT_ROOT` 必须包含 `.webnovel/state.json`
-- **禁止**在 `${CLAUDE_PLUGIN_ROOT}/` 下读取或写入项目文件
+- **禁止**在 `${WEBNOVEL_PLUGIN_ROOT}/` / `${CLAUDE_PLUGIN_ROOT}/` 下读取或写入项目文件
 
 ## 查询分类 → 最窄工具
 

@@ -16,6 +16,7 @@ argument-hint: "[章号或范围，如 5 或 1-5]"
 ## 红线
 
 - 必须通过 `Agent` 工具调用 `reviewer`，禁止主流程伪造结论或口头总结代替 subagent 输出。
+- Codex 或其他无 Claude `Agent` 工具的宿主必须进入兼容模式：按 `../../agents/reviewer.md` 的边界和 reviewer schema 在主流程审查，并在最终报告说明“未调用 subagent，使用兼容模式”；不得声称已经调用了不存在的 subagent。
 - reviewer 只返回严格 JSON；主流程负责把返回值写入 `${PROJECT_ROOT}/.webnovel/tmp/review_results.json`，随后由 `review-pipeline` 覆盖为标准 review_result artifact。
 - 报告与 metrics 只由 `review-pipeline --save-metrics` 产出；主流程不伪造 `overall_score`。
 - 项目根不合法 / 缺 `.webnovel/state.json` / 缺待审正文 → 阻断。
@@ -25,8 +26,13 @@ argument-hint: "[章号或范围，如 5 或 1-5]"
 ### Step 1：解析项目根
 
 ```bash
-export WORKSPACE_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
-export SCRIPTS_DIR="${CLAUDE_PLUGIN_ROOT}/scripts"
+export WORKSPACE_ROOT="${CODEX_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$PWD}}"
+export WEBNOVEL_PLUGIN_ROOT="${WEBNOVEL_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"
+if [ -z "${WEBNOVEL_PLUGIN_ROOT}" ] || [ ! -d "${WEBNOVEL_PLUGIN_ROOT}/scripts" ]; then
+  echo "ERROR: 未设置 WEBNOVEL_PLUGIN_ROOT/CLAUDE_PLUGIN_ROOT 或缺少 scripts 目录" >&2
+  exit 1
+fi
+export SCRIPTS_DIR="${WEBNOVEL_PLUGIN_ROOT}/scripts"
 export PROJECT_ROOT="$(python "${SCRIPTS_DIR}/webnovel.py" --project-root "${WORKSPACE_ROOT}" where)"
 ```
 

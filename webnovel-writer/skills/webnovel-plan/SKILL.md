@@ -28,9 +28,14 @@ argument-hint: "[卷号，如 1]"
 ## 环境准备
 
 ```bash
-export WORKSPACE_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
-export SKILL_ROOT="${CLAUDE_PLUGIN_ROOT}/skills/webnovel-plan"
-export SCRIPTS_DIR="${CLAUDE_PLUGIN_ROOT}/scripts"
+export WORKSPACE_ROOT="${CODEX_PROJECT_DIR:-${CLAUDE_PROJECT_DIR:-$PWD}}"
+export WEBNOVEL_PLUGIN_ROOT="${WEBNOVEL_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-}}"
+if [ -z "${WEBNOVEL_PLUGIN_ROOT}" ] || [ ! -d "${WEBNOVEL_PLUGIN_ROOT}/scripts" ]; then
+  echo "ERROR: 未设置 WEBNOVEL_PLUGIN_ROOT/CLAUDE_PLUGIN_ROOT 或缺少 scripts 目录" >&2
+  exit 1
+fi
+export SKILL_ROOT="${WEBNOVEL_PLUGIN_ROOT}/skills/webnovel-plan"
+export SCRIPTS_DIR="${WEBNOVEL_PLUGIN_ROOT}/scripts"
 export PROJECT_ROOT="$(python "${SCRIPTS_DIR}/webnovel.py" --project-root "${WORKSPACE_ROOT}" where)"
 
 python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" placeholder-scan --format text
