@@ -11,6 +11,8 @@
 
 一个跑在 Claude Code / Codex 上的长篇网文创作插件。从初始化设定、规划卷纲，到写章、审查、沉淀记忆、查询状态，再到一个只读的可视化面板——整条创作流程都给你串好了。
 
+本仓库根据原仓库增加了codex的支持方便因为各种情况需要用codex不用claude code的用户。
+
 它想解决的其实就一件事：**让 AI 写到几百章，依然记得住设定、接得住伏笔、守得住大纲。**
 
 一句话定位：这是一套面向长篇连载的一致性系统，不是写完就忘的一次性生成器。
@@ -83,7 +85,17 @@ claude plugin install webnovel-writer@webnovel-writer-marketplace --scope user
 
 > 插件的安装、启用与日常管理等更多用法，见 Claude Code 官方文档：[插件](https://docs.claude.com/en/docs/claude-code/plugins) · [插件市场](https://docs.claude.com/en/docs/claude-code/plugin-marketplaces)。
 
-Codex 适配入口在 [`webnovel-writer/.codex-plugin/plugin.json`](webnovel-writer/.codex-plugin/plugin.json)。通过 Codex 本地插件流程安装后，可直接使用 `webnovel-*` skills；需要手动运行 runtime 命令时，先把 `WEBNOVEL_PLUGIN_ROOT` 指向插件根目录。Codex 下没有 Claude `Agent` / hook 能力时，按 `using-webnovel-writer` 的兼容模式执行。
+Codex 桌面版安装：
+1. 点击插件
+2. 加号展开，点击添加插件市场
+3. 添加：https://github.com/EstusFlask/webnovel-writer-codex/
+4. 安装即可
+
+Codex CLI安装（没用过不保证准确性）
+```bash
+npx codex-marketplace add EstusFlask/webnovel-writer-codex --plugins
+```
+
 
 ### 2. 安装 Python 依赖
 
