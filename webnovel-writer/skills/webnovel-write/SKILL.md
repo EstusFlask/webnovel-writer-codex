@@ -124,6 +124,8 @@ Task:
 
 只根据任务书起草。不加载 core-constraints/anti-ai-guide（已内化到任务书）。只输出纯正文，无占位符。有结构化节点时围绕 CBN→CPNs→CEN 展开。中文思维写作。
 
+Codex 兼容模式下，宿主会话元信息（如 current_date、timezone、系统日期、运行报告时间）一律视为非剧情资料；除非任务书 / 章纲明确要求，正文开头不得写日期、时间戳、Markdown 日期行、报告头或章节外标题。正文第一行应直接进入叙事。
+
 ### Step 3：审查
 
 必须使用 `Agent` 工具调用 `reviewer`，不得由主流程伪造审查 JSON。
@@ -181,6 +183,8 @@ python -X utf8 -c "import json,os; from pathlib import Path; root=Path(os.enviro
 顺序：修复非 blocking issue → 风格适配 → 排版 → Anti-AI 终检。
 
 只改表达不改事实。`anti_ai_force_check=fail` 时不进 Step 5。`--minimal` 仅排版。
+
+排版时若发现正文首行混入宿主日期、时间戳、报告头或章节外标题，必须删除；这类元信息不算剧情事实，删除不视为改剧情。
 
 ### Step 5：提交
 

@@ -302,6 +302,21 @@ def test_webnovel_write_skill_uses_explicit_agent_invocation_templates():
     assert "不得用主流程口头代替 subagent 输出" in text
 
 
+def test_webnovel_write_skill_excludes_codex_runtime_metadata_from_chapter_body():
+    """Codex 兼容模式写正文时，不应把宿主日期/时区等运行元信息写进章节开头。"""
+    text = _read_text(SKILLS_DIR / "webnovel-write" / "SKILL.md")
+
+    for required in (
+        "宿主会话元信息",
+        "current_date",
+        "timezone",
+        "正文开头不得写日期",
+        "正文第一行应直接进入叙事",
+        "删除不视为改剧情",
+    ):
+        assert required in text
+
+
 @pytest.mark.parametrize("skill_name", AUTHOR_REPORT_SKILLS)
 def test_main_skills_define_author_friendly_final_report_contract(skill_name: str):
     """四个主 Skill 必须提供作者友好的总状态 + 三段式最终报告契约。"""
