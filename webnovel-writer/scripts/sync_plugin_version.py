@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import argparse
 import json
@@ -9,6 +9,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 PLUGIN_JSON_PATH = ROOT / "webnovel-writer" / ".claude-plugin" / "plugin.json"
+CODEX_PLUGIN_JSON_PATH = ROOT / "webnovel-writer" / ".codex-plugin" / "plugin.json"
 MARKETPLACE_JSON_PATH = ROOT / ".claude-plugin" / "marketplace.json"
 README_PATH = ROOT / "README.md"
 PLUGIN_NAME = "webnovel-writer"
@@ -124,6 +125,7 @@ def update_readme_release(content: str, version: str, release_notes: str | None)
 
 def sync_versions(version: str | None = None, release_notes: str | None = None) -> tuple[str, str, bool]:
     plugin_payload = load_json(PLUGIN_JSON_PATH)
+    codex_plugin_payload = load_json(CODEX_PLUGIN_JSON_PATH)
     marketplace_payload = load_json(MARKETPLACE_JSON_PATH)
     readme_content = load_text(README_PATH)
     marketplace_plugin = get_marketplace_plugin(marketplace_payload)
@@ -134,6 +136,10 @@ def sync_versions(version: str | None = None, release_notes: str | None = None) 
 
     if plugin_payload.get("version") != target_version:
         plugin_payload["version"] = target_version
+        changed = True
+
+    if codex_plugin_payload.get("version") != target_version:
+        codex_plugin_payload["version"] = target_version
         changed = True
 
     if marketplace_plugin.get("version") != target_version:
@@ -147,6 +153,7 @@ def sync_versions(version: str | None = None, release_notes: str | None = None) 
 
     if changed:
         save_json(PLUGIN_JSON_PATH, plugin_payload)
+        save_json(CODEX_PLUGIN_JSON_PATH, codex_plugin_payload)
         save_json(MARKETPLACE_JSON_PATH, marketplace_payload)
 
     return previous_version, target_version, changed
@@ -154,16 +161,22 @@ def sync_versions(version: str | None = None, release_notes: str | None = None) 
 
 def check_versions(expected_version: str | None = None) -> int:
     plugin_payload = load_json(PLUGIN_JSON_PATH)
+    codex_plugin_payload = load_json(CODEX_PLUGIN_JSON_PATH)
     marketplace_payload = load_json(MARKETPLACE_JSON_PATH)
     readme_content = load_text(README_PATH)
     marketplace_plugin = get_marketplace_plugin(marketplace_payload)
 
     plugin_version = str(plugin_payload.get("version", ""))
+    codex_plugin_version = str(codex_plugin_payload.get("version", ""))
     marketplace_version = str(marketplace_plugin.get("version", ""))
     readme_version = get_readme_current_version(readme_content)
     readme_badge_version = get_readme_badge_version(readme_content)
 
     mismatches: list[str] = []
+    if plugin_version != codex_plugin_version:
+        mismatches.append(
+            f"claude plugin.json={plugin_version}, codex plugin.json={codex_plugin_version}"
+        )
     if plugin_version != marketplace_version:
         mismatches.append(
             f"plugin.json={plugin_version}, marketplace.json={marketplace_version}"

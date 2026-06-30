@@ -87,7 +87,10 @@ def _marketplace_plugin(payload: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def _is_plugin_root(root: Path) -> bool:
-    return (root / ".claude-plugin" / "plugin.json").is_file()
+    return (
+        (root / ".claude-plugin" / "plugin.json").is_file()
+        or (root / ".codex-plugin" / "plugin.json").is_file()
+    )
 
 
 def _plugin_root(root: Path) -> Path:
@@ -115,6 +118,60 @@ def _check_manifest(root: Path, issues: list[dict[str, str]]) -> tuple[str, str]
     if not str(payload.get("description") or "").strip():
         issues.append(_issue("manifest.description", message="plugin description missing", path=str(plugin_json), repair="补齐 description。"))
     return name, version
+
+
+def _check_codex_manifest(root: Path, claude_version: str, issues: list[dict[str, str]]) -> None:
+    plugin_json = _plugin_root(root) / ".codex-plugin" / "plugin.json"
+    payload, error = _load_json(plugin_json)
+    if error:
+        issues.append(
+            _issue(
+                "manifest.codex_plugin_json",
+                message=error,
+                path=str(plugin_json),
+                repair="恢复 .codex-plugin/plugin.json，Codex 兼容入口依赖该 manifest。",
+            )
+        )
+        return
+
+    name = str(payload.get("name") or "")
+    version = str(payload.get("version") or "")
+    if name != PLUGIN_NAME:
+        issues.append(
+            _issue(
+                "manifest.codex_name",
+                message=f"unexpected Codex plugin name: {name}",
+                path=str(plugin_json),
+                repair=f"Codex manifest name 应为 {PLUGIN_NAME}。",
+            )
+        )
+    if claude_version and version != claude_version:
+        issues.append(
+            _issue(
+                "version.codex_manifest",
+                message=f"claude plugin.json={claude_version}, codex plugin.json={version}",
+                path=str(plugin_json),
+                repair="运行 sync_plugin_version.py --version X.Y.Z --release-notes ...。",
+            )
+        )
+    if payload.get("skills") != "./skills/":
+        issues.append(
+            _issue(
+                "manifest.codex_skills",
+                message=f"unexpected Codex skills path: {payload.get('skills')}",
+                path=str(plugin_json),
+                repair='Codex manifest 应声明 "skills": "./skills/"。',
+            )
+        )
+    if "agents" in payload:
+        issues.append(
+            _issue(
+                "manifest.codex_agents_unsupported",
+                message="Codex plugin manifest does not support an agents field",
+                path=str(plugin_json),
+                repair="不要在 .codex-plugin/plugin.json 中伪注册 agents；通过 skills 内的兼容模式读取 agents/*.md。",
+            )
+        )
 
 
 def _check_marketplace(root: Path, plugin_version: str, issues: list[dict[str, str]]) -> None:
@@ -187,6 +244,7 @@ def _iter_plugin_text_files(root: Path) -> list[Path]:
     plugin_root = _plugin_root(root)
     roots = [
         plugin_root / ".claude-plugin",
+        plugin_root / ".codex-plugin",
         plugin_root / "adapters",
         plugin_root / "agents",
         plugin_root / "hooks",
@@ -283,6 +341,7 @@ def _check_portability(root: Path, issues: list[dict[str, str]]) -> None:
     targets = list((plugin_root / "skills").glob("*/SKILL.md"))
     targets.extend((plugin_root / "agents").glob("*.md"))
     targets.extend((plugin_root / ".claude-plugin").glob("*.json"))
+    targets.extend((plugin_root / ".codex-plugin").glob("*.json"))
     hooks_root = plugin_root / "hooks"
     if hooks_root.is_dir():
         targets.extend(path for path in hooks_root.rglob("*") if path.suffix in {".json", ".py", ".sh", ".md"})
@@ -305,16 +364,102 @@ def _check_portability(root: Path, issues: list[dict[str, str]]) -> None:
             )
 
 
+def _check_codex_agent_compatibility(root: Path, issues: list[dict[str, str]]) -> None:
+    plugin_root = _plugin_root(root)
+    support_doc = plugin_root / "adapters" / "codex" / "support.md"
+    using_skill = plugin_root / "skills" / "using-webnovel-writer" / "SKILL.md"
+    business_skills = (
+        plugin_root / "skills" / "webnovel-init" / "SKILL.md",
+        plugin_root / "skills" / "webnovel-write" / "SKILL.md",
+        plugin_root / "skills" / "webnovel-review" / "SKILL.md",
+    )
+
+    for filename in (
+        "context-agent.md",
+        "reviewer.md",
+        "data-agent.md",
+        "deconstruction-agent.md",
+    ):
+        path = plugin_root / "agents" / filename
+        if not path.is_file():
+            issues.append(
+                _issue(
+                    "codex.agent_file",
+                    message=f"agent file missing: {filename}",
+                    path=str(path),
+                    repair="恢复 agents/*.md；Codex 兼容模式按这些文件执行边界。",
+                )
+            )
+
+    docs_text = ""
+    for path in (support_doc, using_skill):
+        try:
+            docs_text += "\n" + path.read_text(encoding="utf-8")
+        except OSError as exc:
+            issues.append(
+                _issue(
+                    "codex.compat_doc",
+                    message=str(exc),
+                    path=str(path),
+                    repair="恢复 Codex adapter 文档和 using-webnovel-writer skill。",
+                )
+            )
+    for required in (
+        "compatibility mode",
+        "no subagent was called",
+        "agents/*.md",
+        "webnovel-writer:context-agent",
+        "webnovel-writer:reviewer",
+        "webnovel-writer:data-agent",
+        "webnovel-writer:deconstruction-agent",
+    ):
+        if required not in docs_text:
+            issues.append(
+                _issue(
+                    "codex.compat_doc",
+                    message=f"missing compatibility wording: {required}",
+                    path=str(support_doc),
+                    repair="在 Codex adapter 文档中说明无 Agent 工具时的 agents/*.md 兼容模式。",
+                )
+            )
+
+    for path in business_skills:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError as exc:
+            issues.append(
+                _issue(
+                    "codex.compat_skill",
+                    message=str(exc),
+                    path=str(path),
+                    repair="恢复业务 Skill 的 Codex 兼容模式说明。",
+                )
+            )
+            continue
+        for required in ("Codex", "兼容模式", "未调用 subagent，使用兼容模式"):
+            if required not in text:
+                issues.append(
+                    _issue(
+                        "codex.compat_skill",
+                        message=f"missing Codex agent compatibility wording: {required}",
+                        path=str(path),
+                        repair="业务 Skill 调用 Agent 的地方必须说明无 Agent 工具时按对应 agents/*.md 在主流程执行。",
+                    )
+                )
+
+
 def validate_package(root: str | Path | None = None, *, strict: bool = False) -> dict[str, Any]:
     repo_root = Path(root) if root is not None else Path(__file__).resolve().parent.parent.parent
     issues: list[dict[str, str]] = []
     _, plugin_version = _check_manifest(repo_root, issues)
+    _check_codex_manifest(repo_root, plugin_version, issues)
     _check_marketplace(repo_root, plugin_version, issues)
     _check_readme_version(repo_root, plugin_version, issues)
     _check_text_encoding(repo_root, issues)
     _check_frontmatter(repo_root, issues)
     _check_optional_assets(repo_root, issues)
     _check_portability(repo_root, issues)
+    _check_codex_agent_compatibility(repo_root, issues)
     blocking = [
         item for item in issues if item["severity"] == "error" or (strict and item["severity"] == "warning")
     ]

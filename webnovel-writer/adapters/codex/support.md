@@ -8,6 +8,7 @@ Verified against local Codex plugin manifest validation on this machine.
 
 - `.codex-plugin/plugin.json` exposes the plugin to Codex.
 - `skills/` are shared with the Claude Code plugin.
+- `agents/*.md` are shared prompt contracts. Codex does not register them through `.codex-plugin/plugin.json`; business skills use them through compatibility mode when no equivalent subagent tool is available.
 - `WEBNOVEL_PLUGIN_ROOT` is the cross-host plugin root variable used by Codex instructions.
 - The Python runtime remains `scripts/webnovel.py`.
 - Read-only flows (`webnovel-doctor`, `webnovel-query`, `webnovel-dashboard`) use the same runtime commands as Claude Code.

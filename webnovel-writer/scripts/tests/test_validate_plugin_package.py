@@ -28,6 +28,15 @@ def _write_minimal_package(root: Path, *, plugin_version: str = "1.2.3", marketp
         {"name": "webnovel-writer", "version": plugin_version, "description": "desc"},
     )
     _write_json(
+        root / "webnovel-writer" / ".codex-plugin" / "plugin.json",
+        {
+            "name": "webnovel-writer",
+            "version": plugin_version,
+            "description": "desc",
+            "skills": "./skills/",
+        },
+    )
+    _write_json(
         root / ".claude-plugin" / "marketplace.json",
         {
             "plugins": [
@@ -59,9 +68,37 @@ def _write_minimal_package(root: Path, *, plugin_version: str = "1.2.3", marketp
     skill = root / "webnovel-writer" / "skills" / "demo" / "SKILL.md"
     skill.parent.mkdir(parents=True, exist_ok=True)
     skill.write_text("---\nname: demo\ndescription: demo\n---\n\n# Demo\n", encoding="utf-8")
-    agent = root / "webnovel-writer" / "agents" / "demo.md"
-    agent.parent.mkdir(parents=True, exist_ok=True)
-    agent.write_text("---\nname: demo\ndescription: demo\ntools: Read\n---\n\n# Demo\n", encoding="utf-8")
+    compat = "Codex 兼容模式：未调用 subagent，使用兼容模式。"
+    for skill_name in ("webnovel-init", "webnovel-write", "webnovel-review"):
+        path = root / "webnovel-writer" / "skills" / skill_name / "SKILL.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            f"---\nname: {skill_name}\ndescription: demo\n---\n\n# Demo\n\n{compat}\n",
+            encoding="utf-8",
+        )
+    using = root / "webnovel-writer" / "skills" / "using-webnovel-writer" / "SKILL.md"
+    using.parent.mkdir(parents=True, exist_ok=True)
+    using.write_text(
+        "---\nname: using-webnovel-writer\ndescription: demo\n---\n\n"
+        "Use compatibility mode with agents/*.md and say no subagent was called.\n",
+        encoding="utf-8",
+    )
+    support = root / "webnovel-writer" / "adapters" / "codex" / "support.md"
+    support.parent.mkdir(parents=True, exist_ok=True)
+    support.write_text(
+        "compatibility mode; no subagent was called; agents/*.md; "
+        "webnovel-writer:context-agent; webnovel-writer:reviewer; "
+        "webnovel-writer:data-agent; webnovel-writer:deconstruction-agent\n",
+        encoding="utf-8",
+    )
+    agents_dir = root / "webnovel-writer" / "agents"
+    agents_dir.mkdir(parents=True, exist_ok=True)
+    for agent_name in ("demo", "context-agent", "reviewer", "data-agent", "deconstruction-agent"):
+        agent = agents_dir / f"{agent_name}.md"
+        agent.write_text(
+            f"---\nname: {agent_name}\ndescription: demo\ntools: Read\n---\n\n# Demo\n",
+            encoding="utf-8",
+        )
 
 
 def test_validate_plugin_package_passes_minimal_package(tmp_path):
@@ -89,6 +126,32 @@ def test_validate_plugin_package_detects_version_mismatch(tmp_path):
 
     assert report["ok"] is False
     assert any(item["code"] == "version.marketplace" for item in report["issues"])
+
+
+def test_validate_plugin_package_detects_codex_version_mismatch(tmp_path):
+    _write_minimal_package(tmp_path)
+    codex_manifest = tmp_path / "webnovel-writer" / ".codex-plugin" / "plugin.json"
+    payload = json.loads(codex_manifest.read_text(encoding="utf-8"))
+    payload["version"] = "1.2.4"
+    _write_json(codex_manifest, payload)
+
+    report = validate_package(tmp_path)
+
+    assert report["ok"] is False
+    assert any(item["code"] == "version.codex_manifest" for item in report["issues"])
+
+
+def test_validate_plugin_package_rejects_codex_agents_field(tmp_path):
+    _write_minimal_package(tmp_path)
+    codex_manifest = tmp_path / "webnovel-writer" / ".codex-plugin" / "plugin.json"
+    payload = json.loads(codex_manifest.read_text(encoding="utf-8"))
+    payload["agents"] = "./agents/"
+    _write_json(codex_manifest, payload)
+
+    report = validate_package(tmp_path)
+
+    assert report["ok"] is False
+    assert any(item["code"] == "manifest.codex_agents_unsupported" for item in report["issues"])
 
 
 def test_validate_plugin_package_detects_readme_badge_mismatch(tmp_path):

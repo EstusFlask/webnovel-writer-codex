@@ -7,6 +7,7 @@ on:
     paths:
       - '.claude-plugin/marketplace.json'
       - 'webnovel-writer/.claude-plugin/plugin.json'
+      - 'webnovel-writer/.codex-plugin/plugin.json'
       - 'README.md'
       - 'CHANGELOG.md'
       - 'releases/**'

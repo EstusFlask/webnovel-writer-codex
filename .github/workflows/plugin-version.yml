@@ -5,6 +5,7 @@ on:
     paths:
       - '.claude-plugin/marketplace.json'
       - 'webnovel-writer/.claude-plugin/plugin.json'
+      - 'webnovel-writer/.codex-plugin/plugin.json'
       - 'webnovel-writer/scripts/sync_plugin_version.py'
       - 'webnovel-writer/scripts/validate_release_notes.py'
       - 'README.md'
@@ -15,6 +16,7 @@ on:
     paths:
       - '.claude-plugin/marketplace.json'
       - 'webnovel-writer/.claude-plugin/plugin.json'
+      - 'webnovel-writer/.codex-plugin/plugin.json'
       - 'webnovel-writer/scripts/sync_plugin_version.py'
       - 'webnovel-writer/scripts/validate_release_notes.py'
       - 'README.md'
