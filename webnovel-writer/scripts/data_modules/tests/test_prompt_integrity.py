@@ -302,6 +302,38 @@ def test_webnovel_write_skill_uses_explicit_agent_invocation_templates():
     assert "不得用主流程口头代替 subagent 输出" in text
 
 
+def test_codex_business_skills_prefer_generic_subagent_before_compatibility_mode():
+    """Codex 有通用 multi-agent 时应传入 agents/*.md 执行，兼容模式只做最后兜底。"""
+    expected = {
+        "webnovel-init": ("deconstruction-agent",),
+        "webnovel-write": ("context-agent", "reviewer", "data-agent"),
+        "webnovel-review": ("reviewer",),
+    }
+
+    for skill_name, agent_names in expected.items():
+        text = _read_text(SKILLS_DIR / skill_name / "SKILL.md")
+        assert "通用 multi-agent" in text, f"{skill_name}: 缺少 Codex 通用 multi-agent 路由"
+        assert "Codex 通用 subagent" in text, f"{skill_name}: 缺少 Codex 通用 subagent 说明"
+        assert "未调用 subagent，使用兼容模式" in text, f"{skill_name}: 缺少兼容模式最终报告说明"
+        for agent_name in agent_names:
+            assert f"../../agents/{agent_name}.md" in text, (
+                f"{skill_name}: 缺少 {agent_name}.md 作为 Codex subagent 契约"
+            )
+
+
+def test_write_skill_preserves_data_agent_artifact_ownership_with_codex_generic_subagent():
+    """data-agent 在 Codex 通用 subagent 隔离时只能由主流程原样搬运 payload，不得语义补写。"""
+    text = _read_text(SKILLS_DIR / "webnovel-write" / "SKILL.md")
+
+    for required in (
+        "Codex 通用 subagent 的写入运输规则",
+        "隔离工作区",
+        "原样写入对应 artifact 路径",
+        "不得重新生成、补写语义字段或改写事实",
+    ):
+        assert required in text
+
+
 def test_webnovel_write_skill_excludes_codex_runtime_metadata_from_chapter_body():
     """Codex 兼容模式写正文时，不应把宿主日期/时区等运行元信息写进章节开头。"""
     text = _read_text(SKILLS_DIR / "webnovel-write" / "SKILL.md")

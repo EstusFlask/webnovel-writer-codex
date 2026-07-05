@@ -39,7 +39,8 @@ argument-hint: "[书名或灵感（可选）]"
 - `Read/Grep`：读项目上下文与参考文件。
 - `Bash`：执行 `webnovel.py init`、文件存在性检查、最小验证。
 - `Agent`：拆分并行子任务；Step 1.5 用户选择参考书拆解作灵感来源时调用 `webnovel-writer:deconstruction-agent`。
-- Codex 或其他无 Claude `Agent` 工具的宿主必须进入兼容模式：按 `../../agents/deconstruction-agent.md` 的边界在主流程执行拆解，并在最终报告说明“未调用 subagent，使用兼容模式”；不得声称已经调用了不存在的 subagent。
+- 宿主 Agent 路由必须按顺序执行：① 有 Claude 命名 `Agent` 时调用 `webnovel-writer:deconstruction-agent`；② Codex 有通用 multi-agent 工具时，调用 Codex 通用 subagent，并把 `../../agents/deconstruction-agent.md` 作为角色、边界、工具和输出 schema 契约传入；③ 无任何 subagent 能力时才进入兼容模式，按 `../../agents/deconstruction-agent.md` 的边界在主流程执行拆解，并在最终报告说明“未调用 subagent，使用兼容模式”。
+- Codex 通用 subagent 不等于 plugin 原生 `webnovel-writer:deconstruction-agent` 命名 Agent；最终报告必须区分“已调用 Codex 通用 subagent”和“已调用 webnovel-writer:deconstruction-agent 命名 Agent”，不得声称已经调用了宿主不存在的命名 subagent。
 - `AskUserQuestion`：关键分歧裁决、候选选择、最终确认。
 - `WebSearch`/`WebFetch`：仅在用户要求市场趋势/平台风向、创意约束需时间敏感依据、或题材信息明显不确定时使用，先 search 后 fetch 核验。
 
@@ -86,6 +87,8 @@ Use the Agent tool to run `webnovel-writer:deconstruction-agent`.
 
 Prompt: reference_title={reference_title}; reference_source={reference_source}; reference_text_path={reference_text_path}; reference_text_excerpt={reference_text_excerpt}; analysis_mode={quick|deep|auto}; init_goal={当前初始化故事方向或空}; target_genre={题材或空}。只返回 init_reference_research JSON 对象，不写任何文件，不创建目录，不写 .story-system、.webnovel、设定集、大纲、正文、idea_bank.json、state.json 或任何 canon/read model 文件。
 ```
+
+Codex 若无 plugin 原生命名 Agent 但有通用 multi-agent 工具，必须调用 Codex 通用 subagent，并把 `../../agents/deconstruction-agent.md` 的完整内容作为该 subagent 的执行契约；只有通用 subagent 不可用时，才按兼容模式在主流程执行。
 
 调用后主流程必须记录一份 `SubagentRun` 汇总（仅供最终报告使用，不写入 canon）：
 

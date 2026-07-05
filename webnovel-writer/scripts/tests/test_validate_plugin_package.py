@@ -68,7 +68,7 @@ def _write_minimal_package(root: Path, *, plugin_version: str = "1.2.3", marketp
     skill = root / "webnovel-writer" / "skills" / "demo" / "SKILL.md"
     skill.parent.mkdir(parents=True, exist_ok=True)
     skill.write_text("---\nname: demo\ndescription: demo\n---\n\n# Demo\n", encoding="utf-8")
-    compat = "Codex 兼容模式：未调用 subagent，使用兼容模式。"
+    compat = "Codex 通用 subagent 优先；无 subagent 能力时进入兼容模式：未调用 subagent，使用兼容模式。"
     for skill_name in ("webnovel-init", "webnovel-write", "webnovel-review"):
         path = root / "webnovel-writer" / "skills" / skill_name / "SKILL.md"
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -80,12 +80,14 @@ def _write_minimal_package(root: Path, *, plugin_version: str = "1.2.3", marketp
     using.parent.mkdir(parents=True, exist_ok=True)
     using.write_text(
         "---\nname: using-webnovel-writer\ndescription: demo\n---\n\n"
+        "Use Codex generic subagent through generic multi-agent with agents/*.md. "
         "Use compatibility mode with agents/*.md and say no subagent was called.\n",
         encoding="utf-8",
     )
     support = root / "webnovel-writer" / "adapters" / "codex" / "support.md"
     support.parent.mkdir(parents=True, exist_ok=True)
     support.write_text(
+        "generic multi-agent; Codex generic subagent; "
         "compatibility mode; no subagent was called; agents/*.md; "
         "webnovel-writer:context-agent; webnovel-writer:reviewer; "
         "webnovel-writer:data-agent; webnovel-writer:deconstruction-agent\n",

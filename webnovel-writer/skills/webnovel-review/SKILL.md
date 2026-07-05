@@ -16,7 +16,8 @@ argument-hint: "[章号或范围，如 5 或 1-5]"
 ## 红线
 
 - 必须通过 `Agent` 工具调用 `reviewer`，禁止主流程伪造结论或口头总结代替 subagent 输出。
-- Codex 或其他无 Claude `Agent` 工具的宿主必须进入兼容模式：按 `../../agents/reviewer.md` 的边界和 reviewer schema 在主流程审查，并在最终报告说明“未调用 subagent，使用兼容模式”；不得声称已经调用了不存在的 subagent。
+- 宿主 Agent 路由必须按顺序执行：① 有 Claude 命名 `Agent` 时调用 `webnovel-writer:reviewer`；② Codex 有通用 multi-agent 工具时，调用 Codex 通用 subagent，并把 `../../agents/reviewer.md` 作为角色、边界、工具和 reviewer schema 契约传入；③ 无任何 subagent 能力时才进入兼容模式，按 `../../agents/reviewer.md` 的边界和 reviewer schema 在主流程审查，并在最终报告说明“未调用 subagent，使用兼容模式”。
+- Codex 通用 subagent 不等于 plugin 原生 `webnovel-writer:reviewer` 命名 Agent；最终报告必须区分“已调用 Codex 通用 subagent”和“已调用 webnovel-writer:reviewer 命名 Agent”，不得声称已经调用了宿主不存在的命名 subagent。
 - reviewer 只返回严格 JSON；主流程负责把返回值写入 `${PROJECT_ROOT}/.webnovel/tmp/review_results.json`，随后由 `review-pipeline` 覆盖为标准 review_result artifact。
 - 报告与 metrics 只由 `review-pipeline --save-metrics` 产出；主流程不伪造 `overall_score`。
 - 项目根不合法 / 缺 `.webnovel/state.json` / 缺待审正文 → 阻断。
@@ -76,6 +77,8 @@ Use the Agent tool to run `webnovel-writer:reviewer`.
 
 Prompt: chapter={chapter_num}; chapter_file={chapter_file}; project_root=${PROJECT_ROOT}; scripts_dir=${SCRIPTS_DIR}。严格输出 reviewer schema JSON，不评分，不口头总结。
 ```
+
+Codex 若无 plugin 原生命名 Agent 但有通用 multi-agent 工具，必须调用 Codex 通用 subagent，并把 `../../agents/reviewer.md` 的完整内容作为该 subagent 的执行契约；只有通用 subagent 不可用时，才按兼容模式在主流程执行。
 
 reviewer 返回后，主流程把严格 JSON 写入 `${PROJECT_ROOT}/.webnovel/tmp/review_results.json`（reviewer 不持 Write，是这份 artifact 的非写入方）。`review-pipeline` 必须把同一路径覆盖为标准 review_result artifact（含 `blocking_count`）。
 

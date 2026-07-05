@@ -41,14 +41,23 @@ python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${WORKSPACE_ROOT}" d
 
 Use `webnovel-doctor` for diagnosis, `webnovel-query` for read-only story questions, and `webnovel-dashboard` for the local dashboard.
 
-## Codex Compatibility Mode
+## Codex Agent Routing
 
 Some Claude Code plugin affordances do not exist as the same tool names in Codex:
 
 - Claude slash commands map to Codex skills. The user can still say `/webnovel-write 12`, but route by the matching skill name.
-- Claude `Agent` tool calls may not be available. If unavailable, do not claim a subagent was called. Run the same step in compatibility mode, following the referenced agent file's boundaries and output schema in the main Codex flow.
+- Claude `Agent` tool calls may not be available as plugin-native `webnovel-writer:*` named agents. If Codex exposes a generic multi-agent tool, use a Codex generic subagent and pass the referenced agent file as its role, boundary, tool, and output-schema contract.
+- If no subagent capability is available, run the same step in compatibility mode, following the referenced agent file's boundaries and output schema in the main Codex flow. In that case, do not claim a subagent was called.
 - Claude hooks are not registered through the Codex manifest. Keep guardrails explicit: run `project-status`, `doctor`, and `write-gate` rather than relying on hidden hook execution.
 - Use Codex native file and shell tools. `Read`, `Grep`, `Bash`, `Write`, and `Edit` in the original Claude skills correspond to Codex file reads/search, shell commands, and patch edits.
+
+Agent reporting must distinguish three cases:
+
+1. Named host agent used: say the corresponding `webnovel-writer:*` agent was called.
+2. Codex generic subagent used: say a Codex generic subagent was called with the matching agent-file contract.
+3. Compatibility mode used: say no subagent was called and compatibility mode was used.
+
+For `data-agent`, preserve artifact ownership. If a Codex generic subagent can write files visible to the main flow, it may write the three `.webnovel/tmp/*_result.json` artifacts directly. If it runs in an isolated workspace, it must return the three JSON payloads; the main flow may only transport those exact payloads to disk without regenerating or semantically repairing them.
 
 Compatibility mode must preserve the runtime invariants:
 

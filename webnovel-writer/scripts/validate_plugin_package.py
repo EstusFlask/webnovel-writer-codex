@@ -169,7 +169,7 @@ def _check_codex_manifest(root: Path, claude_version: str, issues: list[dict[str
                 "manifest.codex_agents_unsupported",
                 message="Codex plugin manifest does not support an agents field",
                 path=str(plugin_json),
-                repair="不要在 .codex-plugin/plugin.json 中伪注册 agents；通过 skills 内的兼容模式读取 agents/*.md。",
+                repair="不要在 .codex-plugin/plugin.json 中伪注册 agents；Codex 通过通用 subagent 或兼容模式读取 agents/*.md。",
             )
         )
 
@@ -405,6 +405,8 @@ def _check_codex_agent_compatibility(root: Path, issues: list[dict[str, str]]) -
                 )
             )
     for required in (
+        "generic multi-agent",
+        "Codex generic subagent",
         "compatibility mode",
         "no subagent was called",
         "agents/*.md",
@@ -419,7 +421,7 @@ def _check_codex_agent_compatibility(root: Path, issues: list[dict[str, str]]) -
                     "codex.compat_doc",
                     message=f"missing compatibility wording: {required}",
                     path=str(support_doc),
-                    repair="在 Codex adapter 文档中说明无 Agent 工具时的 agents/*.md 兼容模式。",
+                    repair="在 Codex adapter 文档中说明 Codex 通用 subagent 优先、无 subagent 能力时才使用 agents/*.md 兼容模式。",
                 )
             )
 
@@ -436,14 +438,14 @@ def _check_codex_agent_compatibility(root: Path, issues: list[dict[str, str]]) -
                 )
             )
             continue
-        for required in ("Codex", "兼容模式", "未调用 subagent，使用兼容模式"):
+        for required in ("Codex", "通用 subagent", "兼容模式", "未调用 subagent，使用兼容模式"):
             if required not in text:
                 issues.append(
                     _issue(
                         "codex.compat_skill",
                         message=f"missing Codex agent compatibility wording: {required}",
                         path=str(path),
-                        repair="业务 Skill 调用 Agent 的地方必须说明无 Agent 工具时按对应 agents/*.md 在主流程执行。",
+                        repair="业务 Skill 调用 Agent 的地方必须说明 Codex 通用 subagent 优先、无 subagent 能力时按对应 agents/*.md 在主流程执行。",
                     )
                 )
 

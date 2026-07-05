@@ -24,7 +24,8 @@ argument-hint: "[章号] [--fast|--minimal]"
 
 - 禁止并步、跳步、伪造审查
 - 必须使用 `Agent` 工具调用指定 subagent；不得用主流程口头代替 subagent 输出
-- Codex 或其他无 Claude `Agent` 工具的宿主必须进入兼容模式：按对应 agent 指令文件（`../../agents/context-agent.md`、`../../agents/reviewer.md`、`../../agents/data-agent.md`）的边界和 schema 在主流程执行，并在最终报告说明“未调用 subagent，使用兼容模式”；不得声称已经调用了不存在的 subagent
+- 宿主 Agent 路由必须按顺序执行：① 有 Claude 命名 `Agent` 时调用 `webnovel-writer:context-agent` / `webnovel-writer:reviewer` / `webnovel-writer:data-agent`；② Codex 有通用 multi-agent 工具时，调用 Codex 通用 subagent，并把对应 agent 指令文件（`../../agents/context-agent.md`、`../../agents/reviewer.md`、`../../agents/data-agent.md`）作为角色、边界、工具和输出 schema 契约传入；③ 无任何 subagent 能力时才进入兼容模式，按对应 agent 指令文件的边界和 schema 在主流程执行，并在最终报告说明“未调用 subagent，使用兼容模式”
+- Codex 通用 subagent 不等于 plugin 原生 `webnovel-writer:*` 命名 Agent；最终报告必须区分“已调用 Codex 通用 subagent”和“已调用 webnovel-writer:* 命名 Agent”，不得声称已经调用了宿主不存在的命名 subagent
 - 审查只跑一轮；blocking issue 定点修复或经用户裁决后才进 Step 4/5
 - 失败只补跑失败步骤，不回退
 - 参考资料按步骤按需加载
@@ -92,6 +93,8 @@ python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" \
 
 Use the Agent tool to run `webnovel-writer:context-agent`.
 
+Codex 若无 plugin 原生命名 Agent 但有通用 multi-agent 工具，必须调用 Codex 通用 subagent，并把 `../../agents/context-agent.md` 的完整内容作为该 subagent 的执行契约；只有通用 subagent 不可用时，才按兼容模式在主流程执行。
+
 Task:
 - chapter={chapter_num}
 - project_root=${PROJECT_ROOT}
@@ -131,6 +134,8 @@ Codex 兼容模式下，宿主会话元信息（如 current_date、timezone、�
 必须使用 `Agent` 工具调用 `reviewer`，不得由主流程伪造审查 JSON。
 
 Use the Agent tool to run `webnovel-writer:reviewer`.
+
+Codex 若无 plugin 原生命名 Agent 但有通用 multi-agent 工具，必须调用 Codex 通用 subagent，并把 `../../agents/reviewer.md` 的完整内容作为该 subagent 的执行契约；只有通用 subagent 不可用时，才按兼容模式在主流程执行。
 
 Task:
 - chapter={chapter_num}
@@ -194,6 +199,8 @@ python -X utf8 -c "import json,os; from pathlib import Path; root=Path(os.enviro
 
 Use the Agent tool to run `webnovel-writer:data-agent`.
 
+Codex 若无 plugin 原生命名 Agent 但有通用 multi-agent 工具，必须调用 Codex 通用 subagent，并把 `../../agents/data-agent.md` 的完整内容作为该 subagent 的执行契约；只有通用 subagent 不可用时，才按兼容模式在主流程执行。
+
 Task:
 - chapter={chapter_num}
 - chapter_file=${CHAPTER_FILE}
@@ -204,6 +211,11 @@ Task:
 - 你是这三份 artifact 的唯一写入者；不直接写 state/index/summaries/memory/vectors/projection。
 
 artifact 字段 schema 由 data-agent 自身定义、runtime validator 校验；主流程只检查文件存在与 schema，不重写、不补写、不口头替代。
+
+Codex 通用 subagent 的写入运输规则：
+- 如果通用 subagent 写入的文件对主流程可见，由它直接写入 `.webnovel/tmp/fulfillment_result.json`、`.webnovel/tmp/disambiguation_result.json`、`.webnovel/tmp/extraction_result.json`。
+- 如果通用 subagent 在隔离工作区运行，它必须返回三份 JSON payload；主流程只允许把这三份 payload 原样写入对应 artifact 路径，不得重新生成、补写语义字段或改写事实。
+- 兼容模式下，主流程按 `data-agent.md` 的边界执行，但最终报告必须说明“未调用 subagent，使用兼容模式”。
 
 调用后主流程必须记录 `SubagentRun` 汇总（仅供最终报告使用）：
 
