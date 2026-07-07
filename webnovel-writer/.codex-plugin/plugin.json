@@ -1,13 +1,13 @@
 {
   "name": "webnovel-writer",
-  "version": "6.2.0",
+  "version": "6.2.1",
   "description": "Long-form Chinese webnovel writing system with skills, runtime checks, RAG, memory, and dashboard.",
   "author": {
-    "name": "lingfengQAQ",
-    "url": "https://github.com/lingfengQAQ"
+    "name": "EstusFlask",
+    "url": "https://github.com/EstusFlask"
   },
-  "homepage": "https://github.com/lingfengQAQ/webnovel-writer",
-  "repository": "https://github.com/lingfengQAQ/webnovel-writer",
+  "homepage": "https://github.com/EstusFlask/webnovel-writer-codex",
+  "repository": "https://github.com/EstusFlask/webnovel-writer-codex",
   "license": "GPL-3.0",
   "keywords": [
     "webnovel",
