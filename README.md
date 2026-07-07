@@ -1,7 +1,7 @@
 # Webnovel Writer
 
 [![License](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-6.2.0-brightgreen.svg)](.claude-plugin/marketplace.json)
+[![Version](https://img.shields.io/badge/version-6.2.1-brightgreen.svg)](.claude-plugin/marketplace.json)
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Compatible-purple.svg)](https://claude.ai/claude-code)
 [![Codex](https://img.shields.io/badge/Codex-Compatible-111111.svg)](webnovel-writer/.codex-plugin/plugin.json)
@@ -330,7 +330,8 @@ Webnovel Writer 用业余时间维护。如果它帮你省下了梳理设定、�
 
 | 版本 | 主要变化 |
 |------|----------|
-| **v6.2.0 (当前)** | 写章结果更清楚，失败后更好恢复 |
+| **v6.2.1 (当前)** | 修复 Windows 写章提交偶发的拒绝访问（WinError 5）：资料文件被短暂占用时自动重试 |
+| **v6.2.0** | 写章结果更清楚，失败后更好恢复 |
 | **v6.1.0** | 插件运行时加固：新增 doctor/project-status/write-gate/projection 重放、hooks、行为 eval 与发布校验 |
 | **v6.0.0** | Story System 全链路上线（合同种子 + 运行时合同 + 章节提交 + 事件审计），补齐集成测试 |
 | **v5.5.5** | 长期记忆闭环：写前注入 + 写后沉淀，新增 `memory` 运维命令 |

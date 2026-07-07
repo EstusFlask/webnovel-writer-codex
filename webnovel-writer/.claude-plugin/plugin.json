@@ -1,6 +1,6 @@
 {
   "name": "webnovel-writer",
-  "version": "6.2.0",
+  "version": "6.2.1",
   "description": "长篇网文创作系统（skills + agents + data chain + RAG）",
   "author": {
     "name": "lingfengQAQ"
