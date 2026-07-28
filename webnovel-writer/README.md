@@ -32,7 +32,7 @@
 | Agent | 职责 | 被谁调用 |
 |-------|------|---------|
 | `context-agent` | 写前 research，输出写作任务书 | `/webnovel-write` Step 1 |
-| `reviewer` | 逐维度事实审查 | `/webnovel-write` Step 3、`/webnovel-review` |
+| `reviewer` | 事实五维 + 可读性 + AI 痕迹七维审查 | `/webnovel-write` Step 3、`/webnovel-review` |
 | `data-agent` | 从正文提取事实，生成 commit artifacts | `/webnovel-write` Step 5 |
 | `deconstruction-agent` | 参考书拆解，提炼可迁移写法 | `/webnovel-init` Step 1.5 |
 

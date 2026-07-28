@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "审查第4章正文。chapter=4, chapter_file='正文/第0004章-迦南学院的考验.md', project_root='agents/evals/files/test-project', scripts_dir 为本插件的 scripts 目录。",
-      "expected_output": "输出结构化 JSON 问题清单，并对 5 个维度逐项给出结论（dimension_results）",
+      "expected_output": "输出结构化 JSON 问题清单，并对 7 个维度逐项给出结论（dimension_results）",
       "files": [
         "agents/evals/files/test-project/正文/第0004章-迦南学院的考验.md",
         "agents/evals/files/test-project/.webnovel/state.json",
@@ -13,10 +13,10 @@
       ],
       "expectations": [
         "输出是合法 JSON，包含 issues 数组和 summary 字符串",
-        "包含 dimension_results，逐项覆盖 setting/timeline/continuity/character/logic 五个维度",
+        "包含 dimension_results，逐项覆盖 setting/timeline/continuity/character/logic/readability/ai_flavor 七个维度",
         "每个维度的 conclusion 非空（无问题时为 pass）",
-        "每个 issue 的 category 属于 setting/timeline/continuity/character/logic/pacing/other 之一",
-        "每个 issue 都有 severity、category、location、description 字段",
+        "每个 issue 的 category 属于 setting/timeline/continuity/character/logic/readability/ai_flavor/pacing/other 之一",
+        "每个 issue 都有 code、severity、category、location、description 字段",
         "每个 issue 都有 evidence 字段且非空",
         "没有输出 overall_score（reviewer 不评分）",
         "没有输出 pass/fail 判定（reviewer 只列问题）"
@@ -48,6 +48,24 @@
       "expectations": [
         "输出是合法 JSON",
         "至少有 1 个 continuity 或 timeline 类型的 issue 提到时间跳跃（上章黄昏，本章晨光）"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "审查第1章正文的可读性与 AI 痕迹。chapter=1, chapter_file='正文/第0001章-可读性审查样例.md', project_root='agents/evals/files/test-project', scripts_dir 为本插件的 scripts 目录。",
+      "expected_output": "识别对白隐含请求、缺失动作对象、关键因果缺口、行政腔和纠正式模板聚集，同时不把合理短句一律判错",
+      "files": [
+        "agents/evals/files/test-project/正文/第0001章-可读性审查样例.md",
+        "agents/evals/files/test-project/.webnovel/state.json"
+      ],
+      "expectations": [
+        "输出是合法 JSON，并包含 readability 与 ai_flavor 的 dimension_results",
+        "至少报告一个 code=IMPLICIT_SPEECH_ACT 的 readability issue",
+        "至少报告一个 code=MISSING_ARGUMENT 或 CAUSAL_BRIDGE_MISSING 的 readability issue",
+        "至少报告一个 code=ABSTRACT_DIALOGUE 或 BINARY_CORRECTION_CLUSTER 的 ai_flavor issue",
+        "报告 code=NARRATOR_VERDICT，识别旁白替群体整齐总结共同动机",
+        "每个 readability/ai_flavor issue 都引用具体原文证据",
+        "不会仅因单句“停手。”而报告 TELEGRAPHIC_CLUSTER"
       ]
     }
   ]

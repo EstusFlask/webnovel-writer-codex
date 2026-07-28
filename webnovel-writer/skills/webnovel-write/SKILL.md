@@ -115,7 +115,14 @@ Task:
 
 ### Step 2：起草正文
 
-只根据任务书起草。不加载 core-constraints/anti-ai-guide（已内化到任务书）。只输出纯正文，无占位符。有结构化节点时围绕 CBN→CPNs→CEN 展开。中文思维写作。
+只根据任务书起草。不加载 core-constraints/anti-ai-guide（可读性底线与项目级高优反馈已内化到任务书）。只输出纯正文，无占位符。有结构化节点时围绕 CBN→CPNs→CEN 展开。中文思维写作。
+
+起草时执行“可读性优先”：
+- 关键动作保留主语、对象、目的、因果和判断来源，不能为了利落删掉理解桥梁。
+- 相邻对白必须字面可承接；后一人的回答若依赖前句未说出的请求或对象，补回必要信息。
+- 允许潜台词、停顿和打断，但省略内容必须能从紧邻动作或上下句唯一恢复。
+- 对话先符合人物当场会说的话，再追求短促；职业术语不得堆成流程报告。
+- 短句和单句段只用于强调，不按比例制造；避免“不是X，是Y”“没有A，只是B”成组出现。
 
 ### Step 3：审查
 
@@ -128,6 +135,7 @@ Task:
 - chapter_file=${CHAPTER_FILE}
 - project_root=${PROJECT_ROOT}
 - scripts_dir=${SCRIPTS_DIR}
+- 覆盖 setting/timeline/continuity/character/logic/readability/ai_flavor 七个维度；可读性与 AI 痕迹必须给句群证据。
 - 只返回严格的 reviewer schema JSON，不写任何文件。
 - 不评分、不口头总结。
 
@@ -159,7 +167,7 @@ python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" rev
   --save-metrics
 ```
 
-审查只跑一轮，reviewer 只调用一次。`blocking=true` 的问题在不改剧情、不破设定的前提下定点修复后直接进 Step 4，不重新调用 reviewer；确实无法修复的 blocking 问题用 `AskUserQuestion` 让用户裁决（接受当前版本 / 手动修复 / 放弃）。非 blocking issue 交给 Step 4 处理。`--fast` 只检查 setting/timeline/continuity。
+审查只跑一轮，reviewer 只调用一次。`blocking=true` 的问题在不改剧情、不破设定的前提下定点修复后直接进 Step 4，不重新调用 reviewer；确实无法修复的 blocking 问题用 `AskUserQuestion` 让用户裁决（接受当前版本 / 手动修复 / 放弃）。非 blocking issue 交给 Step 4 处理。`--fast` 检查 setting/timeline/continuity/readability/ai_flavor，可跳过需要深查状态的 character/logic。
 
 `--minimal` 不调用 reviewer 与 `review-pipeline`，但必须**覆盖写入**本章新的 no-review `review_results.json`（禁止复用旧 artifact），使 Step 5 提交链有有效 `--review-result`（成功标准“审查已落库”对 `--minimal` 的豁免仍成立）：
 
@@ -171,9 +179,9 @@ python -X utf8 -c "import json,os; from pathlib import Path; root=Path(os.enviro
 
 `references/polish-guide.md` 区段读：先 `Grep` 匹配 `^#{1,3} ` 定位锚点行号，再 `Read` 的 offset/limit 取段——主路径取 `## 2. 执行顺序（必须按序）`；Anti-AI 终检单独区段取 `## 2A. Anti-AI 检测细则` 与 `## Phase 1 增补：Anti-AI 规范（7层，原版）`（词库段），不全文读。`references/writing/typesetting.md`、`references/style-adapter.md` 短文件，全文读。
 
-顺序：修复非 blocking issue → 风格适配 → 排版 → Anti-AI 终检。
+顺序：修复非 blocking issue → 可读性复核 → 风格适配 → 排版 → Anti-AI 终检。
 
-只改表达不改事实。`anti_ai_force_check=fail` 时不进 Step 5。`--minimal` 仅排版。
+可读性复核先检查语义完整和对白承接，再处理模板腔；不得用“删解释”重新制造因果缺口。润色报告必须给出 `unresolved_high_readability`、`dialogue_adjacency_check` 与 `anti_ai_force_check`。只改表达不改事实；前者不为 0 或任一检查为 `fail` 时不进 Step 5。`--minimal` 仅排版。
 
 ### Step 5：提交
 

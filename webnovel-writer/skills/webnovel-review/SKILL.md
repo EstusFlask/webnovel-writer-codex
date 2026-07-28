@@ -9,7 +9,7 @@ argument-hint: "[章号或范围，如 5 或 1-5]"
 
 ## 目标
 
-- 解析真实书项目根，调度统一 `reviewer` 完成结构化审查并落库。
+- 解析真实书项目根，调度统一 `reviewer` 完成事实五维 + readability + ai_flavor 七维结构化审查并落库。
 - 主链事实以 `.story-system/reviews/chapter_{NNN}.review.json` 与 latest accepted `CHAPTER_COMMIT` 为准；`.webnovel/state.json` 仅为兼容投影。
 - 有 `blocking=true` 问题时交用户裁决。
 
@@ -70,6 +70,8 @@ Use the Agent tool to run `webnovel-writer:reviewer`.
 
 Prompt: chapter={chapter_num}; chapter_file={chapter_file}; project_root=${PROJECT_ROOT}; scripts_dir=${SCRIPTS_DIR}。严格输出 reviewer schema JSON，不评分，不口头总结。
 ```
+
+reviewer 必须逐项给出 `setting / timeline / continuity / character / logic / readability / ai_flavor` 结论。可读性检查覆盖隐含请求、缺失对象、关键因果、判断来源；AI 痕迹检查覆盖行政腔、句群碎裂与纠正式模板聚集，不能只搜高频词。
 
 reviewer 返回后，主流程把严格 JSON 写入 `${PROJECT_ROOT}/.webnovel/tmp/review_results.json`（reviewer 不持 Write，是这份 artifact 的非写入方）。`review-pipeline` 必须把同一路径覆盖为标准 review_result artifact（含 `blocking_count`）。
 

@@ -66,16 +66,17 @@
 ### Reviewer（审）
 
 - 文件：`agents/reviewer.md`
-- 职责：章节质量审查，内部包含以下六个审查维度：
+- 职责：章节质量审查，统一输出以下七个审查维度：
 
 | 审查维度 | 检查重点 |
 |----------|----------|
-| High-point Checker | 爽点密度与质量 |
-| Consistency Checker | 设定一致性（战力/地点/时间线） |
-| Pacing Checker | Strand 比例与断档 |
-| OOC Checker | 人物行为是否偏离人设 |
-| Continuity Checker | 场景与叙事连贯性 |
-| Reader-pull Checker | 钩子强度、期待管理、追读力 |
+| setting | 设定、能力、物品与世界规则 |
+| timeline | 时间推进、倒计时与同地约束 |
+| continuity | 上章钩子、场景转换与情绪承接 |
+| character | 人设、动机、说话方式与知识边界 |
+| logic | 因果、决策与冲突结果 |
+| readability | 主语/对象/因果/判断来源与对白承接 |
+| ai_flavor | 行政腔、句群碎裂、纠正式模板与通用反应 |
 
 ## Story System（合同驱动体系）
 

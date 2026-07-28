@@ -43,6 +43,7 @@ def _resolve_report_path(project_root: Path, report_file: str) -> Path:
 
 
 def _format_issue(issue: Dict[str, Any], index: int) -> List[str]:
+    code = str(issue.get("code") or "").strip()
     description = str(issue.get("description") or "未填写问题描述")
     severity = str(issue.get("severity") or "medium")
     category = str(issue.get("category") or "other")
@@ -51,15 +52,20 @@ def _format_issue(issue: Dict[str, Any], index: int) -> List[str]:
     fix_hint = str(issue.get("fix_hint") or "未提供修复方向")
     blocking = "是" if issue.get("blocking") else "否"
 
-    return [
+    lines = [
         f"{index}. **{description}**",
         f"   - 严重级别：{severity}",
         f"   - 分类：{category}",
+    ]
+    if code:
+        lines.append(f"   - 问题代码：{code}")
+    lines.extend([
         f"   - 位置：{location}",
         f"   - 阻断：{blocking}",
         f"   - 证据：{evidence}",
         f"   - 修复方向：{fix_hint}",
-    ]
+    ])
+    return lines
 
 
 def render_review_report(payload: Dict[str, Any]) -> str:

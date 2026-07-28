@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-审查结果 schema（v6）。
+审查结果 schema（v7）。
 
-替代原 checker-output-schema.md 的评分制，改为结构化问题清单。
+在结构化问题清单中保留事实审查、可读性与 AI 痕迹维度。
 """
 from __future__ import annotations
 
@@ -21,13 +21,23 @@ except ImportError:  # pragma: no cover
 VALID_SEVERITIES = {"critical", "high", "medium", "low"}
 VALID_CATEGORIES = {
     "continuity", "setting", "character", "timeline",
-    "ai_flavor", "logic", "pacing", "other",
+    "readability", "ai_flavor", "logic", "pacing", "other",
 }
+REVIEW_DIMENSIONS = (
+    "setting",
+    "timeline",
+    "continuity",
+    "character",
+    "logic",
+    "readability",
+    "ai_flavor",
+)
 SCORE_CATEGORIES = (
     "continuity",
     "setting",
     "character",
     "timeline",
+    "readability",
     "ai_flavor",
     "logic",
     "pacing",
@@ -52,6 +62,7 @@ def _issue_penalty(issue: "ReviewIssue") -> float:
 @dataclass
 class ReviewIssue:
     severity: str
+    code: str = ""
     category: str = "other"
     location: str = ""
     description: str = ""
@@ -75,6 +86,7 @@ class ReviewIssue:
 class ReviewResult:
     chapter: int
     issues: List[ReviewIssue] = field(default_factory=list)
+    dimension_results: List[Dict[str, str]] = field(default_factory=list)
     summary: str = ""
 
     @property
@@ -139,6 +151,7 @@ class ReviewResult:
             "issues_count": self.issues_count,
             "blocking_count": self.blocking_count,
             "has_blocking": self.has_blocking,
+            "dimension_results": list(self.dimension_results),
             "summary": self.summary,
         }
 
@@ -169,6 +182,7 @@ def parse_review_output(chapter: int, raw: Dict[str, Any]) -> ReviewResult:
             continue
         issues.append(ReviewIssue(
             severity=str(item.get("severity", "medium")),
+            code=str(item.get("code", "")),
             category=str(item.get("category", "other")),
             location=str(item.get("location", "")),
             description=str(item.get("description", "")),
@@ -176,9 +190,25 @@ def parse_review_output(chapter: int, raw: Dict[str, Any]) -> ReviewResult:
             fix_hint=str(item.get("fix_hint", "")),
             blocking=item.get("blocking"),
         ))
+    dimension_results: List[Dict[str, str]] = []
+    seen_dimensions = set()
+    for item in raw.get("dimension_results", []):
+        if not isinstance(item, dict):
+            continue
+        dimension = str(item.get("dimension", "")).strip()
+        conclusion = str(item.get("conclusion", "")).strip()
+        if dimension not in REVIEW_DIMENSIONS or dimension in seen_dimensions or not conclusion:
+            continue
+        seen_dimensions.add(dimension)
+        dimension_results.append({
+            "dimension": dimension,
+            "conclusion": conclusion,
+        })
+
     return ReviewResult(
         chapter=chapter,
         issues=issues,
+        dimension_results=dimension_results,
         summary=str(raw.get("summary", "")),
     )
 
@@ -197,6 +227,10 @@ def _write_json(path: Path, payload: Any) -> None:
 
 
 def append_ai_flavor_anti_patterns(project_root: str | Path, result: ReviewResult) -> int:
+    """Persist reusable readability/AI-flavor failures as future writing anti-patterns.
+
+    The legacy function name is retained for callers and compatibility.
+    """
     root = Path(project_root).expanduser().resolve()
     path = root / ".story-system" / "anti_patterns.json"
     existing = _read_json_if_exists(path) or []
@@ -206,7 +240,7 @@ def append_ai_flavor_anti_patterns(project_root: str | Path, result: ReviewResul
     seen_texts = {str(item.get("text") or "").strip() for item in existing if isinstance(item, dict)}
     additions: List[Dict[str, Any]] = []
     for index, issue in enumerate(result.issues, start=1):
-        if issue.category != "ai_flavor" or issue.severity not in {"medium", "high", "critical"}:
+        if issue.category not in {"readability", "ai_flavor"} or issue.severity not in {"medium", "high", "critical"}:
             continue
         text = (issue.evidence or issue.description or "").strip()[:200]
         if not text or text in seen_texts:
@@ -218,6 +252,9 @@ def append_ai_flavor_anti_patterns(project_root: str | Path, result: ReviewResul
                 "source_table": "review_extracted",
                 "source_id": f"ch{int(result.chapter):04d}_issue_{index}",
                 "category": issue.category,
+                "issue_code": issue.code,
+                "rule": issue.description,
+                "fix_hint": issue.fix_hint,
                 "added_at": datetime.now().isoformat(timespec="seconds"),
             }
         )
