@@ -75,7 +75,8 @@ reviewer 必须逐项输出：
 
 `medium` 以上的 `readability` / `ai_flavor` issue 会追加到 `.story-system/anti_patterns.json`，保存：
 
-- 证据文本 `text`
+- 可跨章节复用的现象规则 `text`（稳定 issue code 优先映射为通用规则，不把案例原句当作未来写作指令）
+- 本章证据 `evidence`
 - 稳定问题类型 `issue_code`
 - 可复用规则 `rule`
 - 修复方向 `fix_hint`

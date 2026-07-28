@@ -226,6 +226,25 @@ def _write_json(path: Path, payload: Any) -> None:
     atomic_write_json(path, payload, backup=True)
 
 
+_REUSABLE_ANTI_PATTERN_RULES = {
+    "IMPLICIT_SPEECH_ACT": "相邻对白不得让后一轮回答前一轮未提出、且无法从紧邻动作恢复的请求。",
+    "MISSING_ARGUMENT": "动作或指令存在多个候选对象时，不得省略关键宾语。",
+    "CAUSAL_BRIDGE_MISSING": "会影响判断的关键动作必须保留目的或因果桥梁。",
+    "POV_CERTAINTY_JUMP": "人物推断不得脱离现场证据写成无来源的绝对事实。",
+    "INFORMATION_PACKING": "不要把观察、反驳、风险和命令压成互不连接的报告短句。",
+    "UNANCHORED_REFERENCE": "代词、序数、真假判断和代动词必须在前一两段有唯一指代对象。",
+    "PSEUDO_SHARED_CONTEXT": "不得用前文未建立的暗号、编号、惯例或默契回应省略关键信息。",
+    "ABSTRACT_DIALOGUE": "现场对白不要连续堆叠分类、定性和流程名词。",
+    "REGISTER_MISMATCH": "对白正式程度必须符合人物身份、关系、场景压力和情绪。",
+    "TELEGRAPHIC_CLUSTER": "不要连续使用只陈述事实、没有强调作用的残句或单句段。",
+    "BINARY_CORRECTION_CLUSTER": "不要成组重复“不是X，是Y / 没有A，只是B”等纠正式模板。",
+    "NARRATOR_VERDICT": "不要用整齐总结替人物或群体统一裁定现场意义。",
+    "GENERIC_REACTION": "不同角色不得反复共用同一套神态、动作和反应模板。",
+    "TRANSLATIONESE_DIALOGUE": "对白先还原中文言语行为，不得逐词沿用英文 pro-form、系词判断、抽象分类问句或字幕语序。",
+    "SLOGANIZED_DIALOGUE": "对白不得为了金句、对称或预告片效果删去主体、对象和实际行动。",
+}
+
+
 def append_ai_flavor_anti_patterns(project_root: str | Path, result: ReviewResult) -> int:
     """Persist reusable readability/AI-flavor failures as future writing anti-patterns.
 
@@ -242,7 +261,13 @@ def append_ai_flavor_anti_patterns(project_root: str | Path, result: ReviewResul
     for index, issue in enumerate(result.issues, start=1):
         if issue.category not in {"readability", "ai_flavor"} or issue.severity not in {"medium", "high", "critical"}:
             continue
-        text = (issue.evidence or issue.description or "").strip()[:200]
+        code = str(issue.code or "").strip()
+        text = (
+            _REUSABLE_ANTI_PATTERN_RULES.get(code)
+            or issue.description
+            or issue.evidence
+            or ""
+        ).strip()[:240]
         if not text or text in seen_texts:
             continue
         seen_texts.add(text)
@@ -254,6 +279,7 @@ def append_ai_flavor_anti_patterns(project_root: str | Path, result: ReviewResul
                 "category": issue.category,
                 "issue_code": issue.code,
                 "rule": issue.description,
+                "evidence": issue.evidence,
                 "fix_hint": issue.fix_hint,
                 "added_at": datetime.now().isoformat(timespec="seconds"),
             }

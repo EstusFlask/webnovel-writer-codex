@@ -67,7 +67,7 @@ python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" pla
 genre 从 `.webnovel/state.json` 的初始化配置快照读取，用于刷新合同树；写前主链真源仍是 `.story-system/` 合同。调用 story-system 前必须先从详细大纲解析真实本章目标，禁止传 `{章纲目标}`、`第N章章纲目标` 等占位 query。
 
 ```bash
-GENRE="$(python -X utf8 -c "import json,sys; s=json.load(open('${PROJECT_ROOT}/.webnovel/state.json',encoding='utf-8')); pi=s.get('project_info',{}); print(pi.get('genre') or s.get('project',{}).get('genre',''))")"
+GENRE="$(python -X utf8 -c "import json,sys; s=json.load(open('${PROJECT_ROOT}/.webnovel/state.json',encoding='utf-8')); pi=s.get('project_info',{}); print(pi.get('genre_label') or pi.get('genre') or s.get('project',{}).get('genre',''))")"
 
 python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" \
   story-system "${CHAPTER_GOAL}" --genre "${GENRE}" --chapter {chapter_num} --persist --emit-runtime-contracts --format both
@@ -102,6 +102,7 @@ Task:
 - storage_path=${PROJECT_ROOT}/.webnovel
 - state_file=${PROJECT_ROOT}/.webnovel/state.json（projection/read-model，仅兼容读取）
 - 先 research，再按 本章硬性约束 → CBN/CPNs/CEN → 本章禁区 → 风格指引 → dynamic_context 补充参考 的顺序输出五段写作任务书。
+- 涉及关键交涉、战斗协作、承诺、拒绝或判断时，在第 4 段加入不超过 8 条“关键对白语义骨架”：说话者→对象、当场意图、不可省信息、已建立/未建立的共享前提。只写沟通任务，不代写金句。
 - 上下文不足时返回 blocker。
 
 产物：一份写作任务书，能独立支撑 Step 2 起草。
@@ -125,14 +126,29 @@ Task:
 
 ### Step 2：起草正文
 
-只根据任务书起草。不加载 core-constraints/anti-ai-guide（可读性底线与项目级高优反馈已内化到任务书）。只输出纯正文，无占位符。有结构化节点时围绕 CBN→CPNs→CEN 展开。中文思维写作。
+剧情事实只根据任务书，不另行读取大纲、设定或项目记忆。起草前全文读取 `references/anti-ai-guide.md`，把它作为生成方法而非新增剧情来源；不得只依赖“中文思维写作”这类抽象口号。只输出纯正文，无占位符。有结构化节点时围绕 CBN→CPNs→CEN 展开。
 
-起草时执行“可读性优先”：
+起草必须在首次写入正文文件前完成三段式内部流程：
+
+1. **Step 2A 白话语义稿**：对关键动作和关键对白先写朴素中文语义，明确“谁对谁做什么 / 为什么”和“谁对谁完成何种言语行为”。只在工作记忆中生成，不落入正文。
+2. **Step 2B 人物化成稿**：按人物身份、关系、场景压力和题材风格改写。可以变短，但不得删除对象、承诺内容、指代对象或理解所需前提。
+3. **Step 2C 保存前语义门**：逐组检查关键对白与行动链。任一项失败时先在本步骤重写；全部通过后才首次写入 `正文/`。
+
+保存前语义门：
+
+- **字面承接**：相邻对白中的请求、警告、承诺、拒绝、确认或判断能从字面及紧邻动作恢复。
+- **指代锚定**：“这 / 那 / 它 / 有 / 真的 / 假的 / 第N次”等在前一两段有唯一对象。
+- **共享前提**：暗号、编号、惯例和默契回应已在前文建立；不得虚构只存在于作者脑中的共同语境。
+- **中文原生表达**：先还原人物当场的沟通意图，再用中文常用动词和语序表达；不得把英文 pro-form、系词判断、抽象分类问句或影视台词逐词换成中文。
+- **金句服从意思**：不得为了对称、留白、史诗感或预告片效果删去主体、对象和实际行动。
+
+起草时继续执行“可读性优先”：
 - 关键动作保留主语、对象、目的、因果和判断来源，不能为了利落删掉理解桥梁。
 - 相邻对白必须字面可承接；后一人的回答若依赖前句未说出的请求或对象，补回必要信息。
 - 允许潜台词、停顿和打断，但省略内容必须能从紧邻动作或上下句唯一恢复。
 - 对话先符合人物当场会说的话，再追求短促；职业术语不得堆成流程报告。
 - 短句和单句段只用于强调，不按比例制造；避免“不是X，是Y”“没有A，只是B”成组出现。
+- 神话感、史诗感和电影感来自意象、行动、选择与代价，不来自倒装、残句、抽象宣言或翻译腔。
 
 Codex 兼容模式下，宿主会话元信息（如 current_date、timezone、系统日期、运行报告时间）一律视为非剧情资料；除非任务书 / 章纲明确要求，正文开头不得写日期、时间戳、Markdown 日期行、报告头或章节外标题。正文第一行应直接进入叙事。
 
@@ -195,7 +211,7 @@ python -X utf8 -c "import json,os; from pathlib import Path; root=Path(os.enviro
 
 顺序：修复非 blocking issue → 可读性复核 → 风格适配 → 排版 → Anti-AI 终检。
 
-可读性复核先检查语义完整和对白承接，再处理模板腔；不得用“删解释”重新制造因果缺口。润色报告必须给出 `unresolved_high_readability`、`dialogue_adjacency_check` 与 `anti_ai_force_check`。只改表达不改事实；前者不为 0 或任一检查为 `fail` 时不进 Step 5。`--minimal` 仅排版。
+可读性复核先检查语义完整、对白承接、指代锚定、共享前提和中文原生表达，再处理模板腔；不得用“删解释”重新制造因果缺口。润色报告必须给出 `unresolved_high_readability`、`dialogue_adjacency_check`、`native_chinese_check` 与 `anti_ai_force_check`。只改表达不改事实；前者不为 0 或任一检查为 `fail` 时不进 Step 5。`--minimal` 仅排版。
 
 排版时若发现正文首行混入宿主日期、时间戳、报告头或章节外标题，必须删除；这类元信息不算剧情事实，删除不视为改剧情。
 
@@ -356,7 +372,7 @@ python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" use
 1. 正文文件存在且非空
 2. 审查已落库（`--minimal` 除外）
 3. blocking=true 必须在 Step 3 定点修复或经用户裁决
-4. anti_ai_force_check=pass（`--minimal` 除外）
+4. native_chinese_check=pass 且 anti_ai_force_check=pass（`--minimal` 除外）
 5. accepted CHAPTER_COMMIT，projection 五项 done/skipped
 6. chapter_status=committed（projection 自动推进）
 7. `write-gate` 的 prewrite / precommit / postcommit 均通过

@@ -753,3 +753,64 @@ def test_story_system_composite_platform_genre_filters_dynamic_context():
     assert route["route_source"] == "explicit_genre_fallback"
     selected_ids = [row["编号"] for row in contract["chapter_brief"]["dynamic_context"]]
     assert selected_ids == ["FOOD-001"]
+
+
+def test_canonical_genre_fallback_does_not_select_first_specialized_subgenre():
+    csv_dir = _make_local_tmp_path() / "csv"
+    csv_dir.mkdir()
+    headers = [
+        "编号", "适用技能", "分类", "层级", "关键词", "意图与同义词", "适用题材",
+        "大模型指令", "核心摘要", "详细展开", "题材/流派", "canonical_genre", "题材别名", "核心调性",
+        "节奏策略", "毒点", "推荐基础检索表", "推荐动态检索表", "默认查询词",
+    ]
+    _write_csv(
+        csv_dir / "题材与调性推理.csv",
+        headers,
+        [
+            {
+                "编号": "GR-SON", "适用技能": "story-system", "适用题材": "都市",
+                "题材/流派": "都市赘婿流", "canonical_genre": "都市",
+                "关键词": "赘婿逆袭", "题材别名": "上门女婿",
+            },
+            {
+                "编号": "GR-POWER", "适用技能": "story-system", "适用题材": "都市",
+                "题材/流派": "都市异能", "canonical_genre": "都市",
+                "关键词": "都市异能", "题材别名": "现代异能",
+            },
+        ],
+    )
+
+    route = StorySystemEngine(csv_dir)._route("街区发生冲突", "都市")
+
+    assert route["meta"]["primary_genre"] == "都市"
+    assert route["meta"]["canonical_genre"] == "都市"
+    assert route["source_trace"][0]["id"] == "GENERIC-CANONICAL"
+
+
+def test_composite_genre_fallback_preserves_resolved_components():
+    csv_dir = _make_local_tmp_path() / "csv"
+    csv_dir.mkdir()
+    headers = [
+        "编号", "适用技能", "分类", "层级", "关键词", "意图与同义词", "适用题材",
+        "大模型指令", "核心摘要", "详细展开", "题材/流派", "canonical_genre", "题材别名", "核心调性",
+        "节奏策略", "毒点", "推荐基础检索表", "推荐动态检索表", "默认查询词",
+    ]
+    _write_csv(
+        csv_dir / "题材与调性推理.csv",
+        headers,
+        [
+            {
+                "编号": "GR-CITY", "适用技能": "story-system", "适用题材": "都市",
+                "题材/流派": "都市异能", "canonical_genre": "都市", "关键词": "都市异能",
+            },
+            {
+                "编号": "GR-FANTASY", "适用技能": "story-system", "适用题材": "奇幻",
+                "题材/流派": "西幻冒险", "canonical_genre": "奇幻", "关键词": "西幻冒险",
+            },
+        ],
+    )
+
+    route = StorySystemEngine(csv_dir)._route("遗迹中的神话战斗", "都市+奇幻")
+
+    assert route["meta"]["primary_genre"] == "都市"
+    assert route["meta"]["genre_components"] == ["都市", "奇幻"]

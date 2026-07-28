@@ -14,6 +14,7 @@ from reference_search import (
     search as search_reference,
     split_multi_value,
 )
+from genre_taxonomy import split_genre_input
 
 from .story_contracts import merge_anti_patterns
 
@@ -211,10 +212,15 @@ class StorySystemEngine:
             elif explicit_canonical and explicit_canonical != "全部":
                 canonical_genre = explicit_canonical
         genre_filter = canonical_genre if canonical_genre not in ("", "全部") else ""
+        genre_components = []
+        for item in self._resolve_genre_values(genre):
+            if item and item not in genre_components:
+                genre_components.append(item)
         return {
             "meta": {
                 "primary_genre": primary_genre,
                 "canonical_genre": canonical_genre,
+                "genre_components": genre_components,
                 "route_source": route_source,
                 "genre_filter": genre_filter,
                 "recommended_base_tables": self._split_multi_value(matched.get("推荐基础检索表")),
@@ -311,12 +317,16 @@ class StorySystemEngine:
         return split_multi_value(raw)
 
     def _resolve_genre_values(self, raw: Any) -> List[str]:
-        return [
-            resolved
-            for token in self._split_genre_value(raw)
-            for resolved in [resolve_genre(token)]
-            if resolved
-        ]
+        tokens: List[str] = []
+        for chunk in self._split_genre_value(raw):
+            parts = split_genre_input(chunk)
+            tokens.extend(parts or [chunk])
+        resolved_values: List[str] = []
+        for token in tokens:
+            resolved = resolve_genre(token)
+            if resolved and resolved not in resolved_values:
+                resolved_values.append(resolved)
+        return resolved_values
 
     def _primary_resolved_genre(self, raw: Any) -> Optional[str]:
         resolved_values = self._resolve_genre_values(raw)
@@ -347,11 +357,30 @@ class StorySystemEngine:
         return " ".join(parts)
 
     def _fallback_row_for_genre(self, rows: List[Dict[str, Any]], genre: str) -> Dict[str, Any] | None:
+        raw_tokens: List[str] = []
+        for chunk in self._split_genre_value(genre):
+            raw_tokens.extend(split_genre_input(chunk) or [chunk])
+        exact_labels = {self._normalize_text(value) for value in raw_tokens if value}
+
+        # 先匹配用户明确给出的细分流派；不能因为同属一个 canonical genre
+        # 就把第一条细分流派（例如赘婿）当作整个大类的默认值。
+        for row in rows:
+            row_labels = (
+                [str(row.get("题材/流派") or "").strip()]
+                + self._split_multi_value(row.get("关键词"))
+                + self._split_multi_value(row.get("题材别名"))
+            )
+            if exact_labels.intersection(
+                {self._normalize_text(value) for value in row_labels if value}
+            ):
+                return row
+
         genre_texts = {
             self._normalize_text(value)
             for value in self._resolve_genre_values(genre)
             if value
         }
+        canonical_matches: List[Dict[str, Any]] = []
         for row in rows:
             candidates = (
                 self._split_genre_value(row.get("适用题材"))
@@ -364,8 +393,25 @@ class StorySystemEngine:
                 if candidate
             }
             if genre_texts.intersection(resolved_candidates):
-                return row
-        return None
+                canonical_matches.append(row)
+        if len(canonical_matches) == 1:
+            return canonical_matches[0]
+        if not canonical_matches:
+            return None
+
+        primary = self._primary_resolved_genre(genre) or str(genre or "").strip()
+        return {
+            "编号": "GENERIC-CANONICAL",
+            "题材/流派": primary,
+            "canonical_genre": primary,
+            "适用题材": primary,
+            "核心调性": "",
+            "节奏策略": "",
+            "毒点": "",
+            "推荐基础检索表": "命名规则|人设与关系|场景写法",
+            "推荐动态检索表": "场景写法|写作技法|爽点与节奏",
+            "默认查询词": "",
+        }
 
     def _infer_genre_from_text(self, text: str) -> str:
         """Infer a canonical genre from plain query text before default routing."""

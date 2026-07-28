@@ -67,6 +67,23 @@
         "每个 readability/ai_flavor issue 都引用具体原文证据",
         "不会仅因单句“停手。”而报告 TELEGRAPHIC_CLUSTER"
       ]
+    },
+    {
+      "id": 5,
+      "prompt": "审查第2章正文的对白可读性与中文原生表达。chapter=2, chapter_file='正文/第0002章-中文对白审查样例.md', project_root='agents/evals/files/test-project', scripts_dir 为本插件的 scripts 目录。",
+      "expected_output": "从指代、共享前提、言语行为和中文句法判断问题，不依赖固定禁用词",
+      "files": [
+        "agents/evals/files/test-project/正文/第0002章-中文对白审查样例.md",
+        "agents/evals/files/test-project/.webnovel/state.json"
+      ],
+      "expectations": [
+        "输出是合法 JSON，并包含 readability 与 ai_flavor 的 dimension_results",
+        "报告 code=UNANCHORED_REFERENCE，指出序数或抽象指代没有唯一锚点",
+        "报告 code=PSEUDO_SHARED_CONTEXT，指出前文未建立老规矩或共同约定",
+        "报告 code=TRANSLATIONESE_DIALOGUE，说明英文 pro-form、系词判断或抽象分类问句遮掉了具体言语行为",
+        "报告 code=SLOGANIZED_DIALOGUE，指出抽象宣言为追求力度删去了主体、对象或实际行动",
+        "修复方向先还原请求、承诺、警告或确认的具体内容，不只是增加口语词"
+      ]
     }
   ]
 }

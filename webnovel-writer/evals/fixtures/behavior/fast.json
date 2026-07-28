@@ -132,6 +132,11 @@
       "description": "Dashboard exposes GET-only API semantics."
     },
     {
+      "id": "draft_language_contract",
+      "type": "draft_language_contract",
+      "description": "Drafting uses a semantic-first native-Chinese pass and review keeps translationese/readability backstops."
+    },
+    {
       "id": "user_report_minimal_review_skipped",
       "type": "user_report_probe",
       "scenario": "minimal_review_skipped",

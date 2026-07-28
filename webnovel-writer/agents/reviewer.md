@@ -73,6 +73,8 @@ python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" ind
 - `CAUSAL_BRIDGE_MISSING`：关键动作之间缺少目的或因果，影响人物判断或读者理解。
 - `POV_CERTAINTY_JUMP`：人物推断被写成无来源的全知事实。
 - `INFORMATION_PACKING`：一句话压入观察、反驳、风险和命令，逻辑虽在但需要回读。
+- `UNANCHORED_REFERENCE`：“这 / 那 / 它 / 有 / 真的 / 假的 / 第N次”等没有唯一、就近的指代对象。
+- `PSEUDO_SHARED_CONTEXT`：角色使用前文未建立的暗号、编号、惯例或默契回应，关键信息只存在于作者脑中。
 
 判断标准：
 - 读者首次阅读能回答“谁做什么、对谁做、为什么”才算通过。
@@ -85,12 +87,15 @@ python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" ind
 3. 找出所有被后续判断当作证据的动作。动作 A 与结论 B 的关系若只靠读者补“为了 / 因为 / 所以”，报告 `CAUSAL_BRIDGE_MISSING`。
 4. 找出“不是 / 没有 / 只是 / 而是 / 看来 / 像是”附近的判断。人物根据现场得出的结论没有视角标记时，报告 `POV_CERTAINTY_JUMP`。
 5. 一句对白依次承担“确认观察→提出例外→判断风险→下令”三项以上，且没有自然连接时，报告 `INFORMATION_PACKING`。
+6. 圈出短对白中的代词、代动词、序数和真假判断。前一两段不存在唯一对象，报告 `UNANCHORED_REFERENCE`。
+7. 搜索“照旧 / 又是 / 第N次 / 单独代动词 / 老规矩”等共享语境信号。前文没有建立相应经历或约定，且紧邻动作也不能唯一恢复时，报告 `PSEUDO_SHARED_CONTEXT`。
 
 必须报告的典型例：
-- “开业了。”→“你开，我是搭档，不是卷帘门。”：前句没有字面提出开门请求，报 `IMPLICIT_SPEECH_ACT`。
-- “它扭肩撞上路灯，也没从摊主身上踏过去。”随后人物据此判断它在避人：缺“为了避人而撞灯”，报 `CAUSAL_BRIDGE_MISSING`。
-- “盘山不是在攻击。它是在找路。”：现场人物的推断被写成绝对事实，报 `POV_CERTAINTY_JUMP`；若同章反复出现同构句，再报 `BINARY_CORRECTION_CLUSTER`。
-- “观察到了。它体重超过二十吨，继续冲撞一样会伤人。退到线后。”：观察、让步关系、风险和命令被压成报告短句，报 `INFORMATION_PACKING`。
+- 前句只宣布状态，后句却拒绝一个没有说出口、也没有动作指向的请求：报 `IMPLICIT_SPEECH_ACT`。
+- 角色绕远或自伤的动作随后被当作“保护别人”的证据，但正文没写目的关系：报 `CAUSAL_BRIDGE_MISSING`。
+- 现场人物把一次观察直接断言为对方真实意图，没有推断来源：报 `POV_CERTAINTY_JUMP`。
+- 对白把观察、让步、风险和命令压成互不连接的报告短句：报 `INFORMATION_PACKING`。
+- 战斗对白突然用具体序数判断真假，前文既没有对应次数，也没有真假判断约定：同时检查 `UNANCHORED_REFERENCE` 与 `PSEUDO_SHARED_CONTEXT`。
 
 不应报告的例：
 - 前文写“他把钥匙递过去”，后一句只说“开门”：对象可由紧邻动作唯一恢复。
@@ -106,10 +111,12 @@ python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" ind
 - `BINARY_CORRECTION_CLUSTER`：相邻句群反复使用“不是X，是Y”“没有A，只是B”等纠正式模板。
 - `NARRATOR_VERDICT`：旁白替人物或群体整齐总结意义，压过现场动作。
 - `GENERIC_REACTION`：多个角色反复使用同一套神态、动作或反应模板。
+- `TRANSLATIONESE_DIALOGUE`：对白沿用英文 pro-form、系词判断、抽象分类问句或字幕语序；语法可通，但没有用中文自然完成当场的请求、承诺、反驳或确认。
+- `SLOGANIZED_DIALOGUE`：为了对称、史诗感或预告片效果删去主体、对象和实际行动，只剩可摘抄但含义悬空的抽象宣言。
 
 判断标准：
 - 职业角色可以正式，冲突高潮可以使用短句；只有表达成组重复、破坏人物声音或读感时才报告。
-- 单个高风险词不自动构成 issue，必须给出上下文或聚集证据。
+- 单个高风险词不自动构成 issue，必须给出上下文或聚集证据。单句若完整触发 `TRANSLATIONESE_DIALOGUE` 或 `SLOGANIZED_DIALOGUE`，且已经替代关键沟通，可以单独报告，但必须说明被英文骨架或金句化遮掉的具体言语行为。
 - 不以增加停顿词、口语词、短句或单句段配额作为修复方向。
 
 强制扫描方法：
@@ -118,10 +125,14 @@ python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" ind
 3. 职业角色的正式话语也要检查自然连接；身份只能解释术语，不能豁免 `INFORMATION_PACKING`。
 4. 连续三个以上单句段若都只是陈述事实、没有强调/转折/落点差异，报告 `TELEGRAPHIC_CLUSTER`。
 5. 旁白使用“没有谁…它们只是…”等结构替群体归纳统一动机时，报告 `NARRATOR_VERDICT`。
+6. 对关键对白先概括言语行为，再比较原句：若角色本应承诺具体行动，却只剩英文 pro-form 式代动词；本应追问具体对象，却改问抽象类别；本应表达关系反应，却只剩系词判断，报告 `TRANSLATIONESE_DIALOGUE`。
+7. 找出脱离上下文后像预告片文案、格言或对称宣言的对白。若补回“谁不能做什么 / 谁要承担什么”后意思才明确，报告 `SLOGANIZED_DIALOGUE`。
 
 必须报告的典型例：
-- “这是对经营场所的意见，不算委托内容。”由日常说话的主角说出：`经营场所 / 意见 / 委托内容` 连续分类，报 `ABSTRACT_DIALOGUE`。
-- 同一场景连续出现“不是在攻击，是在找路”“没有谁命令，只是看见”：报 `BINARY_CORRECTION_CLUSTER`。
+- 日常人物用三个分类名词界定一件现场小事，整句像制度说明：报 `ABSTRACT_DIALOGUE`。
+- 同一场景连续用两组以上“不是X，是Y / 没有A，只是B”替代观察和行动：报 `BINARY_CORRECTION_CLUSTER`。
+- 回应本应表示“我会接手 / 我替你争取时间”，正文却只给出可一对一反译为英文代动词的残句：报 `TRANSLATIONESE_DIALOGUE`。
+- 角色面对具体威胁时说出没有主体和对象的抽象宣言，读者必须从作者意图补全含义：报 `SLOGANIZED_DIALOGUE`；若同时没有指代锚点，再报 `UNANCHORED_REFERENCE`。
 
 不应报告的例：
 - 行动队长宣读法定程序时使用“现场核验、调阅范围”：身份和任务需要这些术语；只有整段都像表格字段且缺自然连接时才报告。

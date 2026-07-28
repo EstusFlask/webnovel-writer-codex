@@ -44,7 +44,7 @@ export PROJECT_ROOT="$(python "${SCRIPTS_DIR}/webnovel.py" --project-root "${WOR
 目标章缺 runtime 合同时，先用详细大纲的真实本章目标刷新（`CHAPTER_GOAL` 禁止 `{章纲目标}` / `第N章章纲目标` 占位文本）：
 
 ```bash
-GENRE="$(python -X utf8 -c "import json; s=json.load(open('${PROJECT_ROOT}/.webnovel/state.json',encoding='utf-8')); pi=s.get('project_info',{}); print(pi.get('genre') or s.get('project',{}).get('genre',''))")"
+GENRE="$(python -X utf8 -c "import json; s=json.load(open('${PROJECT_ROOT}/.webnovel/state.json',encoding='utf-8')); pi=s.get('project_info',{}); print(pi.get('genre_label') or pi.get('genre') or s.get('project',{}).get('genre',''))")"
 
 python -X utf8 "${SCRIPTS_DIR}/webnovel.py" --project-root "${PROJECT_ROOT}" \
   story-system "${CHAPTER_GOAL}" --genre "${GENRE}" --chapter {chapter_num} --persist --emit-runtime-contracts --format both
@@ -78,7 +78,7 @@ Use the Agent tool to run `webnovel-writer:reviewer`.
 Prompt: chapter={chapter_num}; chapter_file={chapter_file}; project_root=${PROJECT_ROOT}; scripts_dir=${SCRIPTS_DIR}。严格输出 reviewer schema JSON，不评分，不口头总结。
 ```
 
-reviewer 必须逐项给出 `setting / timeline / continuity / character / logic / readability / ai_flavor` 结论。可读性检查覆盖隐含请求、缺失对象、关键因果、判断来源；AI 痕迹检查覆盖行政腔、句群碎裂与纠正式模板聚集，不能只搜高频词。
+reviewer 必须逐项给出 `setting / timeline / continuity / character / logic / readability / ai_flavor` 结论。可读性检查覆盖隐含请求、缺失对象、关键因果、判断来源、未锚定指代与伪共享语境；AI 痕迹检查覆盖行政腔、句群碎裂、纠正式模板、英译中骨架与金句化对白，不能只搜高频词或固定案例句。
 
 Codex 若无 plugin 原生命名 Agent 但有通用 multi-agent 工具，必须调用 Codex 通用 subagent，并把 `../../agents/reviewer.md` 的完整内容作为该 subagent 的执行契约；只有通用 subagent 不可用时，才按兼容模式在主流程执行。
 

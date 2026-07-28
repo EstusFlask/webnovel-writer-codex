@@ -187,7 +187,33 @@ def test_readability_review_issue_added_with_reusable_rule(tmp_path):
     assert added == 1
     assert patterns[0]["category"] == "readability"
     assert patterns[0]["issue_code"] == "IMPLICIT_SPEECH_ACT"
+    assert "后一轮回答前一轮未提出" in patterns[0]["text"]
+    assert patterns[0]["evidence"] == "“开业了。” / “你开。”"
     assert "字面可承接" in patterns[0]["fix_hint"]
+
+
+def test_translationese_feedback_persists_general_rule_not_case_sentence(tmp_path):
+    result = ReviewResult(
+        chapter=14,
+        issues=[
+            ReviewIssue(
+                severity="medium",
+                code="TRANSLATIONESE_DIALOGUE",
+                category="ai_flavor",
+                description="角色用英文代动词式残句接受了争取时间的请求",
+                evidence="“你有。”",
+                fix_hint="还原为具体承诺后再按人物口吻压缩",
+            )
+        ],
+    )
+
+    added = append_ai_flavor_anti_patterns(tmp_path, result)
+
+    patterns = json.loads((tmp_path / ".story-system" / "anti_patterns.json").read_text(encoding="utf-8"))
+    assert added == 1
+    assert patterns[0]["text"].startswith("对白先还原中文言语行为")
+    assert patterns[0]["text"] != patterns[0]["evidence"]
+    assert patterns[0]["evidence"] == "“你有。”"
 
 
 def test_ai_flavor_review_feedback_dedupes_evidence(tmp_path):

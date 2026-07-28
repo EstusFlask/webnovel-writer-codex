@@ -230,6 +230,43 @@ def _eval_dashboard_read_only(root: Path, case: dict[str, Any]) -> dict[str, Any
     )
 
 
+def _eval_draft_language_contract(root: Path, case: dict[str, Any]) -> dict[str, Any]:
+    plugin_root = _plugin_root(root)
+    write_text = _read(plugin_root / "skills" / "webnovel-write" / "SKILL.md")
+    context_text = _read(plugin_root / "agents" / "context-agent.md")
+    reviewer_text = _read(plugin_root / "agents" / "reviewer.md")
+    anti_ai_text = _read(plugin_root / "skills" / "webnovel-write" / "references" / "anti-ai-guide.md")
+    typesetting_text = _read(
+        plugin_root / "skills" / "webnovel-write" / "references" / "writing" / "typesetting.md"
+    )
+
+    checks = {
+        "Step 2 loads anti-ai guide": "起草前全文读取 `references/anti-ai-guide.md`" in write_text,
+        "semantic-first drafting": "Step 2A 白话语义稿" in write_text and "Step 2B 人物化成稿" in write_text,
+        "pre-save gate": "Step 2C 保存前语义门" in write_text,
+        "native Chinese gate": "中文原生表达" in write_text and "native_chinese_check" in write_text,
+        "dialogue intent brief": "关键对白语义骨架" in write_text and "共享前提" in context_text,
+        "translationese prevention": "英文 pro-form" in anti_ai_text and "先还原言语行为" in anti_ai_text,
+        "review issue codes": all(
+            code in reviewer_text
+            for code in (
+                "UNANCHORED_REFERENCE",
+                "PSEUDO_SHARED_CONTEXT",
+                "TRANSLATIONESE_DIALOGUE",
+                "SLOGANIZED_DIALOGUE",
+            )
+        ),
+        "typesetting does not delete semantics": "排版不能成为删除语义的理由" in typesetting_text,
+    }
+    failed = [label for label, passed in checks.items() if not passed]
+    return _result(
+        case,
+        passed=not failed,
+        reason="draft language contract holds" if not failed else "draft language contract drifted",
+        evidence=failed or ["semantic-first, native-Chinese, and review backstop are present"],
+    )
+
+
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -400,6 +437,7 @@ EVALUATORS = {
     "artifact_ownership": _eval_artifact_ownership,
     "commit_projection_runtime": _eval_commit_projection_runtime,
     "dashboard_read_only": _eval_dashboard_read_only,
+    "draft_language_contract": _eval_draft_language_contract,
     "user_report_probe": _eval_user_report_probe,
 }
 
