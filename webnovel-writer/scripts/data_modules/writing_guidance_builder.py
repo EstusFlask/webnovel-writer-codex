@@ -241,7 +241,7 @@ def build_guidance_items(
     overall_avg = review_trend.get("overall_avg")
     if isinstance(overall_avg, (int, float)) and float(overall_avg) < low_score_threshold:
         guidance.append(
-            f"最近审查均分{overall_avg:.1f}低于阈值{low_score_threshold:.1f}，建议先保稳：减少跳场、每段补动作结果闭环。"
+            f"最近审查均分{overall_avg:.1f}低于阈值{low_score_threshold:.1f}，建议先保稳：减少跳场，关键动作写清对象、目的与可见后果；不要求每段机械闭环。"
         )
 
     genre = str(genre_profile.get("genre") or "").strip()
@@ -358,11 +358,11 @@ def build_writing_checklist(
     if isinstance(overall_avg, (int, float)):
         _add_item(
             "readability_loop",
-            "段落可读性闭环（动作→结果→情绪）",
+            "关键行动链可读（对象→动作→可见后果）",
             weight=max(default_weight, 1.1),
             required=True,
             source="reader_signal.review_trend",
-            verify_hint="抽查3段，均包含动作结果闭环。",
+            verify_hint="抽查3处关键行动，均能定位动作对象、必要目的与可见后果；不强制补情绪总结。",
         )
 
     genre = str(genre_profile.get("genre") or "").strip()

@@ -247,11 +247,15 @@ def test_reviewer_covers_readability_and_ai_flavor_with_stable_issue_codes():
         "MISSING_ARGUMENT",
         "CAUSAL_BRIDGE_MISSING",
         "POV_CERTAINTY_JUMP",
+        "UNANCHORED_REFERENCE",
+        "PSEUDO_SHARED_CONTEXT",
         "ABSTRACT_DIALOGUE",
         "REGISTER_MISMATCH",
         "TELEGRAPHIC_CLUSTER",
         "BINARY_CORRECTION_CLUSTER",
         "NARRATOR_VERDICT",
+        "TRANSLATIONESE_DIALOGUE",
+        "SLOGANIZED_DIALOGUE",
     ):
         assert issue_code in reviewer_text
 
@@ -273,7 +277,19 @@ def test_write_chain_prioritizes_semantic_clarity_before_anti_ai_surface_cleanup
     for required in ("语义压缩过头", "关键因果被省略", "回答依赖隐含请求"):
         assert required in anti_ai_text
 
-    assert "执行可读性复核：语义完整 → 对白承接 → 人物口语" in polish_text
+    for required in (
+        "Step 2A 白话语义稿",
+        "Step 2B 人物化成稿",
+        "Step 2C 保存前语义门",
+        "native_chinese_check",
+    ):
+        assert required in write_text
+
+    for required in ("中文原生表达协议", "英文 pro-form", "先还原言语行为"):
+        assert required in anti_ai_text
+
+    assert "关键对白语义骨架" in context_text
+    assert "执行可读性复核：语义完整 → 对白承接 → 指代/共享前提 → 中文原生表达 → 人物口语" in polish_text
     assert "单句成段只用于强调、转折或落点，不设比例" in polish_text
     for required in (
         "unresolved_high_readability",

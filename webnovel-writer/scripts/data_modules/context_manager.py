@@ -320,8 +320,8 @@ class ContextManager:
         project = state.get("project") or {}
         project_info = state.get("project_info") or {}
         genre_raw = str(
-            project_info.get("genre")
-            or project_info.get("genre_label")
+            project_info.get("genre_label")
+            or project_info.get("genre")
             or project.get("genre")
             or fallback
         )
