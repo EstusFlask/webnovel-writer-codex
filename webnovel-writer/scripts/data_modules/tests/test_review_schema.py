@@ -5,6 +5,7 @@ import json
 
 import pytest
 from data_modules.review_schema import (
+    REVIEW_DIMENSIONS,
     ReviewIssue,
     ReviewResult,
     append_ai_flavor_anti_patterns,
@@ -60,7 +61,8 @@ def test_review_result_to_dict_roundtrip():
     result = ReviewResult(
         chapter=10,
         issues=[
-            ReviewIssue(severity="medium", category="ai_flavor", location="p5", description="AI味重",
+            ReviewIssue(severity="medium", code="TELEGRAPHIC_CLUSTER",
+                        category="ai_flavor", location="p5", description="AI味重",
                         evidence="'稳住心神'出现3次", fix_hint="替换为具体动作描写"),
         ],
         summary="1个AI味问题",
@@ -70,6 +72,7 @@ def test_review_result_to_dict_roundtrip():
     assert d["blocking_count"] == 0
     assert len(d["issues"]) == 1
     assert d["issues"][0]["category"] == "ai_flavor"
+    assert d["issues"][0]["code"] == "TELEGRAPHIC_CLUSTER"
     assert d["issues"][0]["fix_hint"] == "替换为具体动作描写"
 
 
@@ -84,6 +87,22 @@ def test_parse_review_output_from_dict():
     result = parse_review_output(chapter=5, raw=raw)
     assert result.chapter == 5
     assert result.blocking_count == 1
+
+
+def test_parse_review_output_preserves_seven_dimension_results():
+    raw = {
+        "issues": [],
+        "dimension_results": [
+            {"dimension": dimension, "conclusion": "pass"}
+            for dimension in REVIEW_DIMENSIONS
+        ],
+        "summary": "无问题",
+    }
+
+    result = parse_review_output(chapter=5, raw=raw)
+
+    assert [item["dimension"] for item in result.dimension_results] == list(REVIEW_DIMENSIONS)
+    assert result.to_dict()["dimension_results"] == raw["dimension_results"]
 
 
 def test_parse_review_output_tolerates_missing_fields():
@@ -122,6 +141,7 @@ def test_review_result_to_metrics_dict():
     assert metrics["overall_score"] < 100
     assert metrics["dimension_scores"]["continuity"] < 100
     assert metrics["dimension_scores"]["ai_flavor"] < 100
+    assert metrics["dimension_scores"]["readability"] == 100
 
 
 def test_ai_flavor_review_issue_added_to_anti_patterns(tmp_path):
@@ -144,6 +164,30 @@ def test_ai_flavor_review_issue_added_to_anti_patterns(tmp_path):
     assert added == 1
     assert any("唯一一个知道" in item["text"] for item in patterns)
     assert patterns[0]["source_id"].startswith("ch0002_issue_")
+
+
+def test_readability_review_issue_added_with_reusable_rule(tmp_path):
+    result = ReviewResult(
+        chapter=1,
+        issues=[
+            ReviewIssue(
+                severity="high",
+                code="IMPLICIT_SPEECH_ACT",
+                category="readability",
+                description="回应依赖前句未说出的开门请求",
+                evidence="“开业了。” / “你开。”",
+                fix_hint="补回明确请求，让相邻对白字面可承接",
+            )
+        ],
+    )
+
+    added = append_ai_flavor_anti_patterns(tmp_path, result)
+
+    patterns = json.loads((tmp_path / ".story-system" / "anti_patterns.json").read_text(encoding="utf-8"))
+    assert added == 1
+    assert patterns[0]["category"] == "readability"
+    assert patterns[0]["issue_code"] == "IMPLICIT_SPEECH_ACT"
+    assert "字面可承接" in patterns[0]["fix_hint"]
 
 
 def test_ai_flavor_review_feedback_dedupes_evidence(tmp_path):

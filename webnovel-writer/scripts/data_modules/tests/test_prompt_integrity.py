@@ -228,6 +228,62 @@ def test_review_schema_consistency():
     assert "issues_count" in reviewer_text
 
 
+def test_reviewer_covers_readability_and_ai_flavor_with_stable_issue_codes():
+    reviewer_text = _read_text(AGENTS_DIR / "reviewer.md")
+
+    for dimension in (
+        "setting",
+        "timeline",
+        "continuity",
+        "character",
+        "logic",
+        "readability",
+        "ai_flavor",
+    ):
+        assert f'"dimension": "{dimension}"' in reviewer_text
+
+    for issue_code in (
+        "IMPLICIT_SPEECH_ACT",
+        "MISSING_ARGUMENT",
+        "CAUSAL_BRIDGE_MISSING",
+        "POV_CERTAINTY_JUMP",
+        "ABSTRACT_DIALOGUE",
+        "REGISTER_MISMATCH",
+        "TELEGRAPHIC_CLUSTER",
+        "BINARY_CORRECTION_CLUSTER",
+        "NARRATOR_VERDICT",
+    ):
+        assert issue_code in reviewer_text
+
+
+def test_write_chain_prioritizes_semantic_clarity_before_anti_ai_surface_cleanup():
+    write_text = _read_text(SKILLS_DIR / "webnovel-write" / "SKILL.md")
+    context_text = _read_text(AGENTS_DIR / "context-agent.md")
+    anti_ai_text = _read_text(
+        SKILLS_DIR / "webnovel-write" / "references" / "anti-ai-guide.md"
+    )
+    polish_text = _read_text(
+        SKILLS_DIR / "webnovel-write" / "references" / "polish-guide.md"
+    )
+
+    for required in ("主语、对象、目的、因果和判断来源", "相邻对白"):
+        assert required in write_text
+        assert required in context_text
+
+    for required in ("语义压缩过头", "关键因果被省略", "回答依赖隐含请求"):
+        assert required in anti_ai_text
+
+    assert "执行可读性复核：语义完整 → 对白承接 → 人物口语" in polish_text
+    assert "单句成段只用于强调、转折或落点，不设比例" in polish_text
+    for required in (
+        "unresolved_high_readability",
+        "dialogue_adjacency_check",
+        "anti_ai_force_check",
+    ):
+        assert required in write_text
+        assert required in polish_text
+
+
 # ---------------------------------------------------------------------------
 # 6. 无残留引用（已删文件）
 # ---------------------------------------------------------------------------
