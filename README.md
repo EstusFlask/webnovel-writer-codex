@@ -1,5 +1,11 @@
 # Webnovel Writer
 
+## 本 fork 的定位
+
+基于 [lingfengQAQ/webnovel-writer](https://github.com/lingfengQAQ/webnovel-writer)，在上游长篇创作流程上加入 Codex 插件清单、工具映射与 Agent 适配，并增强中文对白、可读性和 AI 味审查。安装本分支时请使用本仓库地址；下方上游公告、赞助与统计链接仍属于原项目。
+
+This fork adds Codex manifests, tool/agent adapters, and Chinese dialogue/readability review improvements to the upstream long-form writing workflow. Chinese remains the primary documentation language because the templates and writing process target Chinese webnovels.
+
 [![License](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-6.2.1-brightgreen.svg)](.claude-plugin/marketplace.json)
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
@@ -11,7 +17,7 @@
 
 一个跑在 Claude Code / Codex 上的长篇网文创作插件。从初始化设定、规划卷纲，到写章、审查、沉淀记忆、查询状态，再到一个只读的可视化面板——整条创作流程都给你串好了。
 
-本仓库根据原仓库增加了codex的支持方便因为各种情况需要用codex不用claude code的用户。
+本分支的 Codex 支持与上游功能边界见上方说明。
 
 它想解决的其实就一件事：**让 AI 写到几百章，依然记得住设定、接得住伏笔、守得住大纲。**
 
@@ -91,16 +97,12 @@ Codex 桌面版安装：
 3. 添加：https://github.com/EstusFlask/webnovel-writer-codex/
 4. 安装即可
 
-Codex CLI安装（没用过不保证准确性）
-```bash
-npx codex-marketplace add EstusFlask/webnovel-writer-codex --plugins
-```
 
 
 ### 2. 安装 Python 依赖
 
 ```bash
-python -m pip install -r https://raw.githubusercontent.com/lingfengQAQ/webnovel-writer/HEAD/requirements.txt
+python -m pip install -r https://raw.githubusercontent.com/EstusFlask/webnovel-writer-codex/HEAD/requirements.txt
 ```
 
 ### 3. 初始化一本书
